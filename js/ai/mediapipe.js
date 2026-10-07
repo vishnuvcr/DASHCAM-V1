@@ -1,5 +1,17 @@
 export const MEDIAPIPE_VERSION = "0.10.35";
 export const MEDIAPIPE_MODEL = "EfficientDet-Lite0 int8 · 320x320 · COCO";
+export const MEDIA_INPUT_MAX_DIMENSION = 320;
+
+export function getMediaInputSize(sourceWidth, sourceHeight, maxDimension = MEDIA_INPUT_MAX_DIMENSION) {
+  if (!(sourceWidth > 0) || !(sourceHeight > 0) || !(maxDimension > 0)) {
+    return null;
+  }
+  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale))
+  };
+}
 
 export class MediaPipeObjectDetector {
   constructor({ scoreThreshold = 0.35, maxResults = 20 } = {}) {
@@ -95,7 +107,19 @@ export class MediaPipeObjectDetector {
     if (!this.ready) await this.init();
     if (!this.worker) throw new Error("MediaPipe worker is unavailable.");
 
-    const bitmap = await createImageBitmap(source);
+    const sourceWidth = source.videoWidth || source.width || 0;
+    const sourceHeight = source.videoHeight || source.height || 0;
+    const inputSize = getMediaInputSize(sourceWidth, sourceHeight);
+    if (!inputSize) throw new Error("Video frame dimensions are unavailable.");
+
+    // Do not transfer a full-resolution phone frame (for example 1600x2560)
+    // to the worker. MediaPipe's model input is 320px, so this preserves the
+    // scene geometry while dramatically reducing bitmap allocation/transfer.
+    const bitmap = await createImageBitmap(source, {
+      resizeWidth: inputSize.width,
+      resizeHeight: inputSize.height,
+      resizeQuality: "medium"
+    });
     const id = ++this.sequence;
     this.lastTimestamp = Math.max(
       this.lastTimestamp + 1,
@@ -105,7 +129,14 @@ export class MediaPipeObjectDetector {
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       this.worker.postMessage(
-        { type: "detect", id, bitmap, timestamp: this.lastTimestamp },
+        {
+          type: "detect",
+          id,
+          bitmap,
+          timestamp: this.lastTimestamp,
+          sourceWidth,
+          sourceHeight
+        },
         [bitmap]
       );
     });
