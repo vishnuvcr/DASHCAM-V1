@@ -1,4 +1,4 @@
-import { laneDrift, smoothLaneValue } from "./lanes.js";
+import { laneDrift, smoothLaneValue, lineXAtY } from "./lanes.js";
 
 function fitLineXByY(points) {
   if (!Array.isArray(points) || points.length < 6) return null;
@@ -94,13 +94,58 @@ function validateLine(line, side, width, height, minSlope = 0.08) {
   return line;
 }
 
+function validateLanePair(leftLine, rightLine, width, height) {
+  if (!leftLine || !rightLine) return null;
+
+  const bottomY = height * 0.94;
+  const nearY = height * 0.56;
+  const leftBottom = lineXAtY(leftLine, bottomY);
+  const rightBottom = lineXAtY(rightLine, bottomY);
+  const leftNear = lineXAtY(leftLine, nearY);
+  const rightNear = lineXAtY(rightLine, nearY);
+
+  if (![leftBottom, rightBottom, leftNear, rightNear].every(Number.isFinite)) return null;
+
+  const bottomWidth = rightBottom - leftBottom;
+  const nearWidth = rightNear - leftNear;
+  const bottomCenter = (leftBottom + rightBottom) / 2;
+  const nearCenter = (leftNear + rightNear) / 2;
+
+  if (!(bottomWidth > width * 0.28 && bottomWidth < width * 0.95)) return null;
+  if (!(nearWidth > width * 0.08 && nearWidth < width * 0.65)) return null;
+  if (!(leftBottom > width * 0.01 && leftBottom < width * 0.48)) return null;
+  if (!(rightBottom > width * 0.52 && rightBottom < width * 0.99)) return null;
+  if (!(leftNear > width * 0.08 && leftNear < width * 0.48)) return null;
+  if (!(rightNear > width * 0.52 && rightNear < width * 0.92)) return null;
+  if (!(bottomCenter > width * 0.25 && bottomCenter < width * 0.75)) return null;
+  if (!(nearCenter > width * 0.25 && nearCenter < width * 0.75)) return null;
+
+  return { leftLine, rightLine };
+}
+
 export function detectLaneLines(imageData, options = {}) {
   const points = extractLanePoints(imageData, options);
   const leftRaw = fitLineXByY(points.left);
   const rightRaw = fitLineXByY(points.right);
+  const leftLine = validateLine(
+    leftRaw,
+    "left",
+    imageData.width,
+    imageData.height,
+    options.minSlope ?? 0.08
+  );
+  const rightLine = validateLine(
+    rightRaw,
+    "right",
+    imageData.width,
+    imageData.height,
+    options.minSlope ?? 0.08
+  );
+  const pair = validateLanePair(leftLine, rightLine, imageData.width, imageData.height);
+
   return {
-    leftLine: validateLine(leftRaw, "left", imageData.width, imageData.height, options.minSlope ?? 0.08),
-    rightLine: validateLine(rightRaw, "right", imageData.width, imageData.height, options.minSlope ?? 0.08),
+    leftLine: pair?.leftLine || null,
+    rightLine: pair?.rightLine || null,
     pointCounts: { left: points.left.length, right: points.right.length }
   };
 }

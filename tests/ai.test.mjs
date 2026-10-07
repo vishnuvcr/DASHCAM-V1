@@ -161,3 +161,12 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   assert.equal(detections.length, 1);
   assert.ok(detections[0].box.x1 > 200 && detections[0].box.x2 < 450);
 }
+
+
+{
+  const yoloSource = readFileSync(
+    new URL("../js/ai/yolo.js", import.meta.url),
+    "utf8"
+  );
+  assert.match(yoloSource, /confidenceThreshold = 0\.55/);
+}

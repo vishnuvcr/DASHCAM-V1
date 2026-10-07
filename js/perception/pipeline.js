@@ -61,7 +61,11 @@ export class PerceptionPipeline {
         track.laneTarget = laneGate !== false;
         track.ttcSeconds = ttc;
 
-        const qualifies = leadTarget && laneGate !== false && collisionWarning(ttc, threshold);
+        const qualifies =
+          track.confirmed &&
+          leadTarget &&
+          laneGate !== false &&
+          collisionWarning(ttc, threshold);
         const streak = qualifies
           ? (this.warningStreakById.get(track.id) || 0) + 1
           : 0;

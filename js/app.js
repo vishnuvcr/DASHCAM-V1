@@ -319,8 +319,9 @@ async function runPerception() {
     }
 
     const laneState = normalizeLaneStateToVideo(lanes || laneDetector.lastState || null);
-    drawOverlay(tracks, laneState);
-    await updateAutomaticWarnings(tracks, laneState, warnings);
+    const stableTracks = tracks.filter((track) => track.confirmed);
+    drawOverlay(stableTracks, laneState);
+    await updateAutomaticWarnings(stableTracks, laneState, warnings);
 
     if (aiReady && detector.modelInfo) {
       const target = detector.modelInfo.targetClasses.join(", ");

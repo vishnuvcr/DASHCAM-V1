@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0] - 2026-10-07
+
+### Fixed
+- Require two matching frames before a detected object is rendered as a stable track.
+- Require confirmed tracks before FCW qualification.
+- Reduce stale tracks by lowering tracker max age from 20 to 12 inference cycles.
+- Raise the default YOLO confidence threshold from 0.45 to 0.55 to reduce false-positive vehicle/person boxes.
+- Reject geometrically implausible lane pairs before LDW/FCW lane gating, reducing false lane warnings from bright structures and roadside edges.
+
+### Tests
+- Added track-confirmation regression coverage.
+- Added YOLO threshold regression coverage.
+- Added plausible lane-pair validation coverage.
+
+### Notes
+- This tuning favors stability over maximum recall on mobile browser inference.
+- FCW/LDW remain non-safety-certified prototype functions.
+
 ## [0.6.0] - 2026-10-07
 
 ### Fixed
