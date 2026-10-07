@@ -180,9 +180,12 @@ function setAutoWarningState(type, active, payload = {}) {
   ldwActive = active;
 }
 
-async function updateAutomaticWarnings(tracks, lanes) {
-  const fcw = tracks
-    .map((track) => ({ trackId: track.id, ttcSeconds: track.ttcSeconds }))
+async function updateAutomaticWarnings(tracks, lanes, warnings = []) {
+  const fcw = warnings
+    .map((warning) => ({
+      trackId: warning.trackId,
+      ttcSeconds: warning.ttcSeconds
+    }))
     .filter((item) => Number.isFinite(item.ttcSeconds))
     .sort((a, b) => a.ttcSeconds - b.ttcSeconds)[0];
 
@@ -230,14 +233,16 @@ async function runPerception() {
     }
 
     let tracks = [];
+    let warnings = [];
     if (aiReady) {
       const result = await pipeline.process(elements.video, now);
       tracks = result.tracks;
+      warnings = result.warnings;
     }
 
     const laneState = lanes || laneDetector.lastState || null;
     drawOverlay(tracks, laneState);
-    await updateAutomaticWarnings(tracks, laneState);
+    await updateAutomaticWarnings(tracks, laneState, warnings);
   } catch (error) {
     aiReady = false;
     aiUnavailable = true;
