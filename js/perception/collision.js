@@ -1,4 +1,5 @@
 import { boxArea, boxCenter } from "./geometry.js";
+import { lineXAtY } from "./lanes.js";
 
 export function areaExpansionTtc(previousBox, currentBox, deltaSeconds) {
   if (!(deltaSeconds > 0)) return Infinity;
@@ -76,4 +77,31 @@ export function isLeadTarget(
     heightGrowthRatio >= minHeightGrowthRatio ||
     bottomAdvanceRatio >= minBottomAdvanceRatio
   );
+}
+
+
+export function targetInLaneCorridor(
+  box,
+  {
+    frameWidth,
+    frameHeight,
+    leftLine = null,
+    rightLine = null,
+    referenceYRatio = 0.92,
+    marginRatio = 0.06
+  } = {}
+) {
+  if (!(frameWidth > 0) || !(frameHeight > 0)) return false;
+  if (!leftLine || !rightLine) return null;
+
+  const y = frameHeight * referenceYRatio;
+  const leftX = lineXAtY(leftLine, y);
+  const rightX = lineXAtY(rightLine, y);
+  if (!Number.isFinite(leftX) || !Number.isFinite(rightX) || rightX <= leftX) return null;
+
+  const bottomCenter = (box.x1 + box.x2) / 2;
+  const laneWidth = rightX - leftX;
+  const margin = laneWidth * marginRatio;
+
+  return bottomCenter >= leftX + margin && bottomCenter <= rightX - margin;
 }
