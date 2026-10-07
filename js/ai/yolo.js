@@ -65,8 +65,8 @@ function detectLayout(dims) {
   if (b === 6 || b === 7) return { kind: "nms", count: a, channels: b, transposed: false };
   if (a === 6 || a === 7) return { kind: "nms", count: b, channels: a, transposed: true };
 
-  if (a >= 6 && a <= 512 && b > a) return { kind: "raw", count: b, channels: a, transposed: false };
-  if (b >= 6 && b <= 512 && a > b) return { kind: "raw", count: a, channels: b, transposed: true };
+  if (a >= 6 && a <= 512 && b > 0) return { kind: "raw", count: b, channels: a, transposed: false };
+  if (b >= 6 && b <= 512 && a > 0) return { kind: "raw", count: a, channels: b, transposed: true };
 
   throw new Error(`Unsupported YOLO output shape: ${dims.join("x")}`);
 }
