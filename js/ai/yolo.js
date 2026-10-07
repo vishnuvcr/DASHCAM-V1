@@ -77,6 +77,31 @@ function getCell(data, index, channel, count, transposed) {
     : Number(data[channel * count + index]);
 }
 
+function restoreYoloBox(cx, cy, w, h, letterbox, inputWidth, inputHeight) {
+  const maxCoordinate = Math.max(
+    Math.abs(cx),
+    Math.abs(cy),
+    Math.abs(w),
+    Math.abs(h)
+  );
+
+  // Some exported YOLO variants emit normalized 0..1 coordinates while
+  // Ultralytics YOLOv8 normally emits 640-space coordinates. Support both.
+  if (maxCoordinate <= 2.5) {
+    cx *= inputWidth;
+    cy *= inputHeight;
+    w *= inputWidth;
+    h *= inputHeight;
+  }
+
+  return undoLetterbox({
+    x1: cx - w / 2,
+    y1: cy - h / 2,
+    x2: cx + w / 2,
+    y2: cy + h / 2
+  }, letterbox);
+}
+
 export function outputToDetections(output, options) {
   const { data, dims } = output;
   const {
@@ -84,7 +109,9 @@ export function outputToDetections(output, options) {
     targetClassIds = DEFAULT_TARGET_CLASS_IDS,
     confidenceThreshold,
     iouThreshold,
-    letterbox
+    letterbox,
+    inputWidth = 640,
+    inputHeight = 640
   } = options;
 
   const layout = detectLayout(dims);
@@ -133,12 +160,15 @@ export function outputToDetections(output, options) {
       continue;
     }
 
-    const restored = undoLetterbox({
-      x1: cx - w / 2,
-      y1: cy - h / 2,
-      x2: cx + w / 2,
-      y2: cy + h / 2
-    }, letterbox);
+    const restored = restoreYoloBox(
+      cx,
+      cy,
+      w,
+      h,
+      letterbox,
+      inputWidth,
+      inputHeight
+    );
 
     const box = clampBox(restored, letterbox.sourceWidth, letterbox.sourceHeight);
     if (!(box.x2 > box.x1) || !(box.y2 > box.y1)) continue;
@@ -169,7 +199,7 @@ export class YoloOnnxDetector {
     inputHeight = 640,
     classes = COCO_CLASSES,
     targetClassIds = DEFAULT_TARGET_CLASS_IDS,
-    confidenceThreshold = 0.35,
+    confidenceThreshold = 0.45,
     iouThreshold = 0.45
   } = {}) {
     Object.assign(this, {
@@ -272,7 +302,9 @@ export class YoloOnnxDetector {
       targetClassIds: this.targetClassIds,
       confidenceThreshold: this.confidenceThreshold,
       iouThreshold: this.iouThreshold,
-      letterbox: meta
+      letterbox: meta,
+      inputWidth: this.inputWidth,
+      inputHeight: this.inputHeight
     });
   }
 }
