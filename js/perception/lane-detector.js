@@ -49,12 +49,12 @@ function isLanePixel(data, index, brightnessThreshold) {
 }
 
 export function extractLanePoints(imageData, {
-  roiTop = 0.45,
-  roiBottom = 0.96,
-  brightnessThreshold = 155,
-  gradientThreshold = 28,
+  roiTop = 0.42,
+  roiBottom = 0.97,
+  brightnessThreshold = 128,
+  gradientThreshold = 16,
   xStep = 2,
-  yStep = 4
+  yStep = 3
 } = {}) {
   const { width, height, data } = imageData;
   const points = { left: [], right: [] };
@@ -62,10 +62,29 @@ export function extractLanePoints(imageData, {
   const endY = Math.min(height - 2, Math.floor(height * roiBottom));
   const center = width / 2;
 
+  // Use a per-row adaptive brightness threshold so exposure changes and
+  // weather/road shading do not erase white lane paint.
+  const rowMean = new Float32Array(height);
+  for (let y = startY; y <= endY; y += 1) {
+    let sum = 0;
+    let count = 0;
+    for (let x = 2; x < width - 2; x += 3) {
+      const index = (y * width + x) * 4;
+      sum += (data[index] + data[index + 1] + data[index + 2]) / 3;
+      count += 1;
+    }
+    rowMean[y] = count ? sum / count : 0;
+  }
+
   for (let y = startY; y <= endY; y += yStep) {
+    const adaptiveThreshold = Math.max(
+      brightnessThreshold,
+      rowMean[y] + 18
+    );
+
     for (let x = 2; x < width - 2; x += xStep) {
       const index = (y * width + x) * 4;
-      if (!isLanePixel(data, index, brightnessThreshold)) continue;
+      if (!isLanePixel(data, index, adaptiveThreshold)) continue;
 
       const leftIndex = (y * width + (x - 2)) * 4;
       const rightIndex = (y * width + (x + 2)) * 4;
@@ -73,8 +92,8 @@ export function extractLanePoints(imageData, {
       const rightGray = (data[rightIndex] + data[rightIndex + 1] + data[rightIndex + 2]) / 3;
       if (Math.abs(rightGray - leftGray) < gradientThreshold) continue;
 
-      if (x < center * 0.98) points.left.push({ x, y });
-      if (x > center * 1.02) points.right.push({ x, y });
+      if (x < center * 0.99) points.left.push({ x, y });
+      if (x > center * 1.01) points.right.push({ x, y });
     }
   }
 
@@ -154,8 +173,9 @@ export class BrowserLaneDetector {
   constructor({
     width = 320,
     height = 180,
-    smoothingAlpha = 0.25,
-    referenceY = 0.92
+    smoothingAlpha = 0.3,
+    referenceY = 0.92,
+    expectedLaneWidthRatio = 0.48
   } = {}) {
     this.width = width;
     this.height = height;
@@ -170,10 +190,12 @@ export class BrowserLaneDetector {
     this.previousLeft = null;
     this.previousRight = null;
     this.missedFrames = 0;
+    this.previousNormalized = null;
+    this.previousTimestampMs = null;
     this.lastState = { leftLine: null, rightLine: null, drift: null, confidence: 0, frameWidth: width, frameHeight: height };
   }
 
-  detect(source) {
+  detect(source, timestampMs = performance.now()) {
     const sourceWidth = source.videoWidth || source.width;
     const sourceHeight = source.videoHeight || source.height;
     if (!(sourceWidth > 0) || !(sourceHeight > 0)) {
@@ -218,19 +240,54 @@ export class BrowserLaneDetector {
 
     const leftLine = this.previousLeft;
     const rightLine = this.previousRight;
-    const drift = leftLine && rightLine
+    const referenceY = this.height * this.referenceY;
+    let estimatedLaneCenterX = null;
+
+    if (leftLine && !rightLine) {
+      const leftX = lineXAtY(leftLine, referenceY);
+      estimatedLaneCenterX = Number.isFinite(leftX)
+        ? leftX + this.width * this.expectedLaneWidthRatio * 0.5
+        : null;
+    } else if (rightLine && !leftLine) {
+      const rightX = lineXAtY(rightLine, referenceY);
+      estimatedLaneCenterX = Number.isFinite(rightX)
+        ? rightX - this.width * this.expectedLaneWidthRatio * 0.5
+        : null;
+    }
+
+    const deltaSeconds =
+      this.previousTimestampMs == null
+        ? 0
+        : Math.max(0, timestampMs - this.previousTimestampMs) / 1000;
+
+    const drift = leftLine || rightLine
       ? laneDrift({
           leftLine,
           rightLine,
+          estimatedLaneCenterX,
           vehicleCenterX: this.width / 2,
-          referenceY: this.height * this.referenceY,
-          frameWidth: this.width
+          referenceY,
+          frameWidth: this.width,
+          previousNormalized: this.previousNormalized,
+          deltaSeconds,
+          predictionHorizonSeconds: 0.7,
+          predictiveThreshold: 0.045
         })
       : null;
 
-    const leftConfidence = leftLine ? Math.min(1, leftLine.points / 80) : 0;
-    const rightConfidence = rightLine ? Math.min(1, rightLine.points / 80) : 0;
-    const confidence = Math.min(leftConfidence, rightConfidence);
+    const leftConfidence = leftLine ? Math.min(1, leftLine.points / 60) : 0;
+    const rightConfidence = rightLine ? Math.min(1, rightLine.points / 60) : 0;
+    const confidence = leftLine && rightLine
+      ? Math.min(leftConfidence, rightConfidence)
+      : Math.max(leftConfidence, rightConfidence) * 0.72;
+
+    if (drift?.valid) {
+      this.previousNormalized = drift.normalized;
+      this.previousTimestampMs = timestampMs;
+    } else {
+      this.previousNormalized = null;
+      this.previousTimestampMs = null;
+    }
     this.lastState = {
       leftLine,
       rightLine,
@@ -246,6 +303,8 @@ export class BrowserLaneDetector {
     this.previousLeft = null;
     this.previousRight = null;
     this.missedFrames = 0;
+    this.previousNormalized = null;
+    this.previousTimestampMs = null;
     this.lastState = {
       leftLine: null,
       rightLine: null,
