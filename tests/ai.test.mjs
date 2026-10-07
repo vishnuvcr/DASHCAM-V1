@@ -118,6 +118,46 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /ort\.wasm\.min\.js/);
   assert.doesNotMatch(runtimeSource, /ort\.wasm\.min\.mjs/);
   assert.match(runtimeSource, /document\.createElement\("script"\)/);
+
+  const appSource = readFileSync(
+    new URL("../js/app.js", import.meta.url),
+    "utf8"
+  );
+  assert.match(appSource, /elements\.overlay\.width === width && elements\.overlay\.height === height/);
 }
 
 console.log("AI_PREPROCESS_TESTS_PASSED");
+
+
+{
+  const inputWidth = 640;
+  const inputHeight = 640;
+  const data = new Float32Array(84);
+  data[0] = 0.5;
+  data[1] = 0.5;
+  data[2] = 0.2;
+  data[3] = 0.2;
+  data[4 + 2] = 0.9;
+
+  const detections = outputToDetections({
+    data,
+    dims: [1, 84, 1]
+  }, {
+    classes: COCO_CLASSES,
+    targetClassIds: new Set([2]),
+    confidenceThreshold: 0.35,
+    iouThreshold: 0.45,
+    letterbox: {
+      sourceWidth: 640,
+      sourceHeight: 640,
+      scale: 1,
+      dx: 0,
+      dy: 0
+    },
+    inputWidth,
+    inputHeight
+  });
+
+  assert.equal(detections.length, 1);
+  assert.ok(detections[0].box.x1 > 200 && detections[0].box.x2 < 450);
+}

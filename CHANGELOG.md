@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0] - 2026-10-07
+
+### Fixed
+- Fixed the ADAS overlay disappearing immediately after drawing because the canvas bitmap was being resized on every animation frame.
+- Added lead-target gating for FCW so crossing traffic and peripheral objects are rejected using frame position, target size, lateral image motion, and approach cues.
+- Added temporal FCW confirmation to reduce one-frame and short-lived false warnings.
+- Raised the default YOLO target confidence threshold from 0.35 to 0.45.
+- Added support for YOLO exports that return normalized 0..1 box coordinates.
+- Added live detection count feedback to the HUD message.
+
+### Tests
+- Added regression coverage for the canvas resize bug.
+- Added FCW tests for crossing traffic, distant targets, and temporal confirmation.
+- Added normalized YOLO coordinate decoding coverage.
+
+### Notes
+- FCW remains an ADAS prototype and is not safety-certified.
+- Distance/TTC is still monocular image-based estimation; accurate production FCW requires camera calibration, ego-motion, depth/velocity estimation, and extensive real-world validation.
+
 ## [0.4.4] - 2026-10-07
 
 ### Fixed

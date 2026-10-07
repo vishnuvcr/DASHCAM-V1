@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { ByteTrackLite } from "../js/perception/tracker.js";
-import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold } from "../js/perception/collision.js";
+import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold, isLeadTarget } from "../js/perception/collision.js";
 import { distanceFromWidth } from "../js/perception/geometry.js";
 import { estimateVehicleDistance, focalLengthFromCalibration } from "../js/perception/distance.js";
 import { laneDrift, laneCenterAtY } from "../js/perception/lanes.js";
@@ -133,14 +133,45 @@ const detection = (x, confidence = 0.9, label = "car") => ({
 
 {
   const detector = new MockDetector([
-    [{ label: "car", confidence: 0.95, box: box(120, 80, 220, 180) }],
-    [{ label: "car", confidence: 0.95, box: box(100, 60, 240, 200) }]
+    [{ label: "car", confidence: 0.95, box: box(580, 300, 700, 440) }],
+    [{ label: "car", confidence: 0.95, box: box(550, 260, 730, 470) }],
+    [{ label: "car", confidence: 0.95, box: box(500, 210, 780, 500) }],
+    [{ label: "car", confidence: 0.95, box: box(430, 150, 850, 560) }]
   ]);
-  const pipeline = new PerceptionPipeline({ detector, baseTtcThreshold: 2 });
-  await pipeline.process({}, 0);
-  const result = await pipeline.process({}, 500);
-  assert.equal(result.warnings.length, 1, "expanding lead object should produce automatic FCW");
+  const pipeline = new PerceptionPipeline({
+    detector,
+    baseTtcThreshold: 2,
+    warningConfirmations: 3
+  });
+  const source = { videoWidth: 1280, videoHeight: 720 };
+  await pipeline.process(source, 0);
+  await pipeline.process(source, 500);
+  const confirmed = await pipeline.process(source, 1000);
+  const result = await pipeline.process(source, 1500);
+  assert.equal(confirmed.warnings.length, 0, "FCW must require temporal confirmation");
+  assert.equal(result.warnings.length, 1, "confirmed expanding lead object should produce automatic FCW");
   assert.ok(result.warnings[0].ttcSeconds <= 2);
 }
 
 console.log("PERCEPTION_TESTS_PASSED");
+
+
+{
+  const previous = box(480, 360, 600, 500);
+  const current = box(700, 350, 850, 525);
+  assert.equal(
+    isLeadTarget(previous, current, { frameWidth: 1280, frameHeight: 720 }),
+    false,
+    "large lateral motion must not qualify crossing traffic as a lead target"
+  );
+}
+
+{
+  const previous = box(600, 300, 640, 340);
+  const current = box(598, 299, 645, 347);
+  assert.equal(
+    isLeadTarget(previous, current, { frameWidth: 1280, frameHeight: 720 }),
+    false,
+    "small distant targets must not trigger FCW"
+  );
+}

@@ -295,7 +295,7 @@ async function runPerception() {
 
     if (aiReady && detector.modelInfo) {
       const target = detector.modelInfo.targetClasses.join(", ");
-      setMessage(`${describeModel()} · targets: ${target}`);
+      setMessage(`${describeModel()} · targets: ${target} · detections: ${tracks.length}`);
     }
   } catch (error) {
     aiReady = false;
@@ -460,9 +460,17 @@ elements.clear.addEventListener("click", clearWarnings);
 function resizeOverlay() {
   const rect = elements.video.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
+
   const ratio = window.devicePixelRatio || 1;
-  elements.overlay.width = Math.round(rect.width * ratio);
-  elements.overlay.height = Math.round(rect.height * ratio);
+  const width = Math.round(rect.width * ratio);
+  const height = Math.round(rect.height * ratio);
+
+  // Setting canvas.width/height clears the bitmap. Do not do it on every
+  // animation frame or perception boxes disappear immediately after drawing.
+  if (elements.overlay.width === width && elements.overlay.height === height) return;
+
+  elements.overlay.width = width;
+  elements.overlay.height = height;
 }
 
 function renderLoop() {
