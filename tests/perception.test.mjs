@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { ByteTrackLite } from "../js/perception/tracker.js";
-import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold, isLeadTarget } from "../js/perception/collision.js";
+import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold, isLeadTarget, targetInLaneCorridor } from "../js/perception/collision.js";
 import { distanceFromWidth } from "../js/perception/geometry.js";
 import { estimateVehicleDistance, focalLengthFromCalibration } from "../js/perception/distance.js";
 import { laneDrift, laneCenterAtY } from "../js/perception/lanes.js";
@@ -70,6 +70,7 @@ const detection = (x, confidence = 0.9, label = "car") => ({
   const left = { slope: 1, intercept: 100 };
   const right = { slope: 1, intercept: -200 };
   assert.equal(laneCenterAtY(left, right, 500), 550);
+  assert.equal(laneCenterAtY({ slope: 0.5, intercept: 100 }, { slope: 0.5, intercept: 300 }, 600), 500);
   const centered = laneDrift({
     leftLine: left,
     rightLine: right,
@@ -174,4 +175,57 @@ console.log("PERCEPTION_TESTS_PASSED");
     false,
     "small distant targets must not trigger FCW"
   );
+}
+
+
+{
+  const left = { slope: -0.4, intercept: 800 };
+  const right = { slope: 0.4, intercept: 200 };
+  const inside = box(610, 500, 690, 690);
+  const outside = box(760, 500, 840, 690);
+  assert.equal(
+    targetInLaneCorridor(inside, {
+      frameWidth: 1280,
+      frameHeight: 720,
+      leftLine: left,
+      rightLine: right
+    }),
+    true
+  );
+  assert.equal(
+    targetInLaneCorridor(outside, {
+      frameWidth: 1280,
+      frameHeight: 720,
+      leftLine: left,
+      rightLine: right
+    }),
+    false
+  );
+}
+
+{
+  const detector = new MockDetector([
+    [{ label: "car", confidence: 0.95, box: box(500, 300, 780, 500) }],
+    [{ label: "car", confidence: 0.95, box: box(500, 250, 780, 540) }],
+    [{ label: "car", confidence: 0.95, box: box(500, 200, 780, 590) }],
+    [{ label: "car", confidence: 0.95, box: box(500, 150, 780, 640) }]
+  ]);
+  const pipeline = new PerceptionPipeline({
+    detector,
+    baseTtcThreshold: 2,
+    warningConfirmations: 2
+  });
+  const source = { videoWidth: 1280, videoHeight: 720 };
+  const laneState = {
+    frameWidth: 1280,
+    frameHeight: 720,
+    leftLine: { slope: -0.4, intercept: 800 },
+    rightLine: { slope: 0.4, intercept: 200 }
+  };
+  await pipeline.process(source, 0, laneState);
+  await pipeline.process(source, 500, laneState);
+  const result = await pipeline.process(source, 1000, laneState);
+  assert.equal(result.warnings.length, 1);
+  assert.ok(result.tracks[0].ttcSeconds <= 2);
+  assert.equal(result.tracks[0].laneTarget, true);
 }
