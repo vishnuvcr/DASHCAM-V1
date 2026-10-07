@@ -1,0 +1,23 @@
+name: DASHCAM-V1 Foundation Tests
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+  pull_request:
+
+jobs:
+  foundation-tester:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run independent foundation tests
+        run: node tests/foundation.test.mjs
