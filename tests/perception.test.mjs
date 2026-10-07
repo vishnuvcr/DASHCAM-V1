@@ -133,10 +133,10 @@ const detection = (x, confidence = 0.9, label = "car") => ({
 
 {
   const detector = new MockDetector([
-    [{ label: "car", confidence: 0.95, box: box(580, 360, 700, 500) }],
-    [{ label: "car", confidence: 0.95, box: box(575, 355, 705, 510) }],
-    [{ label: "car", confidence: 0.95, box: box(570, 350, 710, 525) }],
-    [{ label: "car", confidence: 0.95, box: box(565, 345, 715, 540) }]
+    [{ label: "car", confidence: 0.95, box: box(580, 300, 700, 440) }],
+    [{ label: "car", confidence: 0.95, box: box(550, 260, 730, 470) }],
+    [{ label: "car", confidence: 0.95, box: box(500, 210, 780, 500) }],
+    [{ label: "car", confidence: 0.95, box: box(430, 150, 850, 560) }]
   ]);
   const pipeline = new PerceptionPipeline({
     detector,
