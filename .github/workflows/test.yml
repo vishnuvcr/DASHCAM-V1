@@ -21,3 +21,6 @@ jobs:
 
       - name: Run independent foundation tests
         run: node tests/foundation.test.mjs
+
+      - name: Run perception tests
+        run: node tests/perception.test.mjs
