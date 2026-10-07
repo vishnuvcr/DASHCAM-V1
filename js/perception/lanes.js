@@ -19,13 +19,17 @@ export function laneDrift({
   vehicleCenterX,
   referenceY,
   frameWidth,
+  estimatedLaneCenterX = null,
   warningThreshold = 0.08,
   previousNormalized = null,
   deltaSeconds = 0,
   predictionHorizonSeconds = 0.7,
   predictiveThreshold = 0.05
 }) {
-  const center = laneCenterAtY(leftLine, rightLine, referenceY);
+  const pairCenter = laneCenterAtY(leftLine, rightLine, referenceY);
+  const center = Number.isFinite(estimatedLaneCenterX)
+    ? estimatedLaneCenterX
+    : pairCenter;
   if (!Number.isFinite(center) || !(frameWidth > 0)) {
     return {
       valid: false,
