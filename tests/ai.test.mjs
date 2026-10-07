@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { calculateLetterbox, undoLetterbox } from "../js/ai/preprocess.js";
 import { COCO_CLASSES, outputToDetections } from "../js/ai/yolo.js";
+import { PerformanceGovernor } from "../js/ai/performance.js";
 
 const meta = calculateLetterbox(1280, 720, 640, 640);
 assert.equal(meta.scale, 0.5);
@@ -183,4 +184,20 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   );
   assert.match(appSource, /laneConfidence >= 0\.45/);
   assert.match(appSource, /ldwWarningStreak >= 3/);
+}
+
+{
+  const governor = new PerformanceGovernor({
+    minIntervalMs: 40,
+    maxIntervalMs: 700,
+    targetLatencyMs: 75,
+    alpha: 0.5
+  });
+  assert.equal(governor.nextDelayMs(), 40);
+  governor.record(50);
+  assert.equal(governor.recommendation, "REAL-TIME");
+  governor.record(300);
+  assert.ok(governor.nextDelayMs() >= 40);
+  assert.ok(governor.recommendation.includes("320"));
+  assert.ok(governor.inferenceFps > 0);
 }
