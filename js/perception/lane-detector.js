@@ -124,6 +124,8 @@ export class BrowserLaneDetector {
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     this.previousLeft = null;
     this.previousRight = null;
+    this.missedFrames = 0;
+    this.lastState = { leftLine: null, rightLine: null, drift: null, confidence: 0, frameWidth: width, frameHeight: height };
   }
 
   detect(source) {
@@ -136,6 +138,16 @@ export class BrowserLaneDetector {
     this.ctx.drawImage(source, 0, 0, this.width, this.height);
     const imageData = this.ctx.getImageData(0, 0, this.width, this.height);
     const result = detectLaneLines(imageData);
+
+    if (result.leftLine || result.rightLine) {
+      this.missedFrames = 0;
+    } else {
+      this.missedFrames += 1;
+      if (this.missedFrames > 8) {
+        this.previousLeft = null;
+        this.previousRight = null;
+      }
+    }
 
     if (result.leftLine) {
       this.previousLeft = this.previousLeft
@@ -174,12 +186,28 @@ export class BrowserLaneDetector {
     const leftConfidence = leftLine ? Math.min(1, leftLine.points / 80) : 0;
     const rightConfidence = rightLine ? Math.min(1, rightLine.points / 80) : 0;
     const confidence = Math.min(leftConfidence, rightConfidence);
-
-    return { leftLine, rightLine, drift, confidence };
+    this.lastState = {
+      leftLine,
+      rightLine,
+      drift,
+      confidence,
+      frameWidth: this.width,
+      frameHeight: this.height
+    };
+    return this.lastState;
   }
 
   reset() {
     this.previousLeft = null;
     this.previousRight = null;
+    this.missedFrames = 0;
+    this.lastState = {
+      leftLine: null,
+      rightLine: null,
+      drift: null,
+      confidence: 0,
+      frameWidth: this.width,
+      frameHeight: this.height
+    };
   }
 }
