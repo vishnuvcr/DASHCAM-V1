@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.0] - 2026-10-07
+
+### Changed
+- Prefer browser WebGPU inference when available, with WASM fallback for incompatible devices.
+- Enable ONNX Runtime Web's WASM proxy worker for better UI responsiveness.
+- Accept compatible ONNX model input sizes instead of enforcing 640x640, enabling lighter 320/416 models.
+- Run lane perception independently from the slower object detector so LDW remains responsive even when AI inference is busy.
+- Add adaptive lane-line brightness detection, single-boundary lane-center estimation, and predictive lane-departure detection.
+- Expose per-inference latency in the HUD.
+
+### Tests
+- Added WebGPU/runtime regression checks.
+- Added model-input adaptation regression coverage.
+- Added predictive lane-departure regression coverage.
+
+### Notes
+- WebGPU availability and performance vary by device/browser.
+- A 640x640 YOLO model on CPU WASM can still be too slow for real-time use on lower-end phones; a 320/416 lightweight model is recommended for the next field test.
+- FCW/LDW remain a monocular ADAS prototype and are not safety-certified.
+
 ## [0.8.1] - 2026-10-07
 
 ### Fixed

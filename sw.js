@@ -1,4 +1,4 @@
-const CACHE = "dashcam-v1-shell-0.8.1";
+const CACHE = "dashcam-v1-shell-0.9.0";
 const ASSETS = [
   "./",
   "./index.html",

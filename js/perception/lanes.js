@@ -19,18 +19,51 @@ export function laneDrift({
   vehicleCenterX,
   referenceY,
   frameWidth,
-  warningThreshold = 0.08
+  estimatedLaneCenterX = null,
+  warningThreshold = 0.08,
+  previousNormalized = null,
+  deltaSeconds = 0,
+  predictionHorizonSeconds = 0.7,
+  predictiveThreshold = 0.05
 }) {
-  const center = laneCenterAtY(leftLine, rightLine, referenceY);
+  const pairCenter = laneCenterAtY(leftLine, rightLine, referenceY);
+  const center = Number.isFinite(estimatedLaneCenterX)
+    ? estimatedLaneCenterX
+    : pairCenter;
   if (!Number.isFinite(center) || !(frameWidth > 0)) {
-    return { valid: false, normalized: 0, warning: false, direction: null, laneCenterX: NaN };
+    return {
+      valid: false,
+      normalized: 0,
+      driftRate: 0,
+      predictedNormalized: 0,
+      warning: false,
+      direction: null,
+      laneCenterX: NaN
+    };
   }
 
   const normalized = (vehicleCenterX - center) / frameWidth;
-  const warning = Math.abs(normalized) >= warningThreshold;
+  const driftRate =
+    Number.isFinite(previousNormalized) && deltaSeconds > 0
+      ? (normalized - previousNormalized) / deltaSeconds
+      : 0;
+  const predictedNormalized =
+    normalized + driftRate * Math.max(0, predictionHorizonSeconds);
+
+  // Warn either when the vehicle is already near/crossing the boundary or
+  // when the current lateral trend predicts crossing it shortly.
+  const directWarning = Math.abs(normalized) >= warningThreshold;
+  const predictiveWarning =
+    Math.abs(predictedNormalized) >= warningThreshold &&
+    Math.abs(normalized) >= predictiveThreshold &&
+    Math.sign(predictedNormalized) === Math.sign(normalized || predictedNormalized);
+  const warning = directWarning || predictiveWarning;
+
   return {
     valid: true,
     normalized,
+    driftRate,
+    predictedNormalized,
     warning,
     direction: warning ? (normalized < 0 ? "LEFT" : "RIGHT") : null,
     laneCenterX: center

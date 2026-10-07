@@ -95,6 +95,10 @@ const detection = (x, confidence = 0.9, label = "car") => ({
   });
   assert.equal(drifting.warning, true);
   assert.equal(drifting.direction, "RIGHT");
+
+  const p = laneDrift({ leftLine: left, rightLine: right, vehicleCenterX: 560, referenceY: 500, frameWidth: 1000, previousNormalized: 0.04, deltaSeconds: 0.2, predictiveThreshold: 0.04, predictionHorizonSeconds: 0.7 });
+  assert.equal(p.warning, true);
+  assert.equal(p.direction, "RIGHT");
 }
 
 {
