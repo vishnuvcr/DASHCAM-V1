@@ -1,4 +1,4 @@
-const CACHE = "dashcam-v1-shell-0.10.3";
+const CACHE = "dashcam-v1-shell-0.11.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -17,6 +17,9 @@ const ASSETS = [
   "./js/perception/detector.js",
   "./js/perception/pipeline.js",
   "./js/ai/runtime.js",
+  "./js/ai/mediapipe.js",
+  "./js/ai/mediapipe-worker.js",
+  "./js/ai/hybrid-detector.js",
   "./js/ai/performance.js",
   "./js/ai/preprocess.js",
   "./js/ai/yolo.js",

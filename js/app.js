@@ -4,7 +4,7 @@ import { addEvent, countEvents, saveModel, loadModel, deleteModel } from "./stor
 import { ByteTrackLite } from "./perception/tracker.js";
 import { PerceptionPipeline } from "./perception/pipeline.js";
 import { BrowserLaneDetector } from "./perception/lane-detector.js";
-import { YoloOnnxDetector } from "./ai/yolo.js";
+import { HybridDetector } from "./ai/hybrid-detector.js";
 import { PerformanceGovernor } from "./ai/performance.js";
 
 const $ = (id) => document.getElementById(id);
@@ -19,7 +19,7 @@ const elements = {
 
 const media = new MediaController(elements.video);
 const telemetry = new Telemetry({ fpsEl: elements.fps, modeEl: elements.mode, eventCountEl: elements.eventCount });
-const detector = new YoloOnnxDetector();
+const detector = new HybridDetector({ mediaPipe: { scoreThreshold: 0.35, maxResults: 20 } });
 const pipeline = new PerceptionPipeline({
   detector,
   tracker: new ByteTrackLite(),
@@ -80,13 +80,13 @@ async function restoreStoredModel() {
     aiUnavailable = false;
 
     const sizeMb = (stored.sizeBytes / 1024 / 1024).toFixed(1);
-    setMessage(`Stored model found: ${stored.name} (${sizeMb} MB). Initializing FCW engine…`);
+    setMessage(`Offline model found: ${stored.name} (${sizeMb} MB). Starting online MediaPipe vision first…`);
 
     try {
       await detector.init();
       aiReady = true;
       const runtime = detector.modelInfo?.runtime || "browser";
-      setMessage(`FCW READY · ${stored.name} · ${runtime}. Start camera or replay to begin vehicle detection.`);
+      setMessage(`AI READY · ${runtime}. Online MediaPipe vision is active; stored ONNX remains the offline fallback.`);
       await record("AI_MODEL_RESTORED_READY", {
         name: stored.name,
         runtime,
@@ -343,11 +343,11 @@ async function runPerception() {
       try {
         await detector.init();
         aiReady = true;
-        setMessage("Browser AI detector ready. Automatic FCW is active; automatic LDW is active.");
+        setMessage("Online MediaPipe vision ready. Automatic FCW and LDW are active.");
         await record("AI_READY");
       } catch (error) {
         aiUnavailable = true;
-        setMessage("AI model is not installed yet. Automatic LDW remains available; camera/replay remains available.");
+        setMessage("Online AI is unavailable and no offline ONNX fallback is installed. Automatic LDW remains available.");
         await record("AI_UNAVAILABLE", { message: error.message });
       }
     }
@@ -429,7 +429,7 @@ async function start() {
     await media.startCamera();
     telemetry.setMode("camera");
     setStatus("running", "RUNNING");
-    setMessage("Live camera active. Automatic LDW starts immediately; automatic FCW starts when the AI model is available.");
+    setMessage("Live camera active. Online MediaPipe vision runs in a worker; automatic FCW and LDW are active when AI is ready.");
     await record("SESSION_STARTED");
     startInferenceLoop();
   } catch (error) {
@@ -469,14 +469,14 @@ elements.model.addEventListener("change", async (event) => {
     aiUnavailable = false;
     setStatus("running", media.mode === "standby" ? "READY" : "RUNNING");
     performanceGovernor.reset();
-    setMessage(`Model loaded and stored locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). Initializing FCW engine…`);
+    setMessage(`Offline fallback stored: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). Online MediaPipe remains the primary detector…`);
 
     try {
       await detector.init();
       aiReady = true;
       aiUnavailable = false;
       const runtime = detector.modelInfo?.runtime || "browser";
-      setMessage(`FCW READY · ${file.name} · ${runtime}. Start camera or replay to begin vehicle detection.`);
+      setMessage(`AI READY · ${runtime}. Online MediaPipe vision is active.`);
       await record("AI_MODEL_READY", {
         name: file.name,
         runtime,
@@ -537,7 +537,7 @@ elements.file.addEventListener("change", async (event) => {
     await media.loadFile(file);
     telemetry.setMode("video");
     setStatus("running", "REPLAY");
-    setMessage("Local video replay active. Automatic LDW starts immediately; automatic FCW starts when the AI model is available.");
+    setMessage("Local video replay active. Online MediaPipe vision runs in a worker; automatic FCW and LDW are active when AI is ready.");
     await record("VIDEO_REPLAY_STARTED");
     startInferenceLoop();
   } catch (error) {
@@ -596,9 +596,22 @@ async function init() {
   } else if (!media.supportsCamera) {
     setMessage("Camera API unavailable. Local video replay remains available.");
   }
+  renderLoop();
   await refreshEventCount();
   await restoreStoredModel();
-  renderLoop();
+  if (!aiReady && !aiUnavailable) {
+    try {
+      await detector.init();
+      aiReady = true;
+      const runtime = detector.modelInfo?.runtime || "MediaPipe";
+      setMessage(`AI READY · ${runtime}. Online vision model loaded from Google.`);
+      await record("AI_ONLINE_READY", { runtime, model: detector.modelInfo?.name || null });
+    } catch (error) {
+      aiUnavailable = true;
+      setMessage(`Online AI unavailable: ${error.message}`);
+      await record("AI_ONLINE_INIT_ERROR", { message: error.message });
+    }
+  }
 }
 
 init();
