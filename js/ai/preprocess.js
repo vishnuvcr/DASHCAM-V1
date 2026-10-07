@@ -1,24 +1,30 @@
-export function letterboxCanvas(source, targetWidth = 640, targetHeight = 640) {
-  const canvas = typeof OffscreenCanvas !== "undefined"
-    ? new OffscreenCanvas(targetWidth, targetHeight)
-    : document.createElement("canvas");
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-  const sourceWidth = source.videoWidth || source.width;
-  const sourceHeight = source.videoHeight || source.height;
+export function calculateLetterbox(sourceWidth, sourceHeight, targetWidth = 640, targetHeight = 640) {
   if (!(sourceWidth > 0) || !(sourceHeight > 0)) throw new Error("Source frame has no dimensions.");
+  if (!(targetWidth > 0) || !(targetHeight > 0)) throw new Error("Target dimensions must be positive.");
 
   const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
   const width = Math.round(sourceWidth * scale);
   const height = Math.round(sourceHeight * scale);
   const dx = Math.floor((targetWidth - width) / 2);
   const dy = Math.floor((targetHeight - height) / 2);
-  ctx.drawImage(source, dx, dy, width, height);
-  return { canvas, scale, dx, dy, sourceWidth, sourceHeight };
+  return { scale, width, height, dx, dy, sourceWidth, sourceHeight };
+}
+
+export function letterboxCanvas(source, targetWidth = 640, targetHeight = 640) {
+  const sourceWidth = source.videoWidth || source.width;
+  const sourceHeight = source.videoHeight || source.height;
+  const meta = calculateLetterbox(sourceWidth, sourceHeight, targetWidth, targetHeight);
+  const canvas = typeof OffscreenCanvas !== "undefined"
+    ? new OffscreenCanvas(targetWidth, targetHeight)
+    : document.createElement("canvas");
+
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, targetWidth, targetHeight);
+  ctx.drawImage(source, meta.dx, meta.dy, meta.width, meta.height);
+  return { canvas, ...meta };
 }
 
 export function canvasToNchw(canvas) {
