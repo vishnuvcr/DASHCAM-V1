@@ -4,6 +4,7 @@ import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold } from "../js/
 import { distanceFromWidth } from "../js/perception/geometry.js";
 import { estimateVehicleDistance, focalLengthFromCalibration } from "../js/perception/distance.js";
 import { laneDrift, laneCenterAtY } from "../js/perception/lanes.js";
+import { detectLaneLines } from "../js/perception/lane-detector.js";
 import { MockDetector } from "../js/perception/detector.js";
 import { PerceptionPipeline } from "../js/perception/pipeline.js";
 
@@ -85,6 +86,36 @@ const detection = (x, confidence = 0.9, label = "car") => ({
     frameWidth: 1000
   });
   assert.equal(drifting.warning, true);
+  assert.equal(drifting.direction, "RIGHT");
+}
+
+{
+  const width = 320;
+  const height = 180;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const paint = (x, y) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const index = (y * width + x) * 4;
+    data[index] = 245;
+    data[index + 1] = 245;
+    data[index + 2] = 245;
+    data[index + 3] = 255;
+  };
+
+  for (let y = 82; y < 174; y += 1) {
+    const leftX = Math.round(198 - 0.7 * y);
+    const rightX = Math.round(122 + 0.7 * y);
+    for (let offset = -2; offset <= 2; offset += 1) {
+      paint(leftX + offset, y);
+      paint(rightX + offset, y);
+    }
+  }
+
+  const lanes = detectLaneLines({ width, height, data });
+  assert.ok(lanes.leftLine, "synthetic left lane should be detected");
+  assert.ok(lanes.rightLine, "synthetic right lane should be detected");
+  assert.ok(lanes.leftLine.slope < 0);
+  assert.ok(lanes.rightLine.slope > 0);
 }
 
 {
@@ -98,6 +129,18 @@ const detection = (x, confidence = 0.9, label = "car") => ({
   assert.equal(a.tracks.length, 1);
   assert.equal(b.tracks[0].id, a.tracks[0].id);
   assert.equal(b.detections.length, 1);
+}
+
+{
+  const detector = new MockDetector([
+    [{ label: "car", confidence: 0.95, box: box(120, 80, 220, 180) }],
+    [{ label: "car", confidence: 0.95, box: box(110, 70, 230, 190) }]
+  ]);
+  const pipeline = new PerceptionPipeline({ detector, baseTtcThreshold: 2 });
+  await pipeline.process({}, 0);
+  const result = await pipeline.process({}, 500);
+  assert.equal(result.warnings.length, 1, "expanding lead object should produce automatic FCW");
+  assert.ok(result.warnings[0].ttcSeconds <= 2);
 }
 
 console.log("PERCEPTION_TESTS_PASSED");
