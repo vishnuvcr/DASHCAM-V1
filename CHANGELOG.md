@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1] - 2026-10-07
+
+### Fixed
+- FCW HUD activation now uses only thresholded collision warnings from the PerceptionPipeline, preventing early warnings for TTC values above the configured safety threshold.
+
+
 ## [0.3.0] - 2026-10-07
 
 ### Added
