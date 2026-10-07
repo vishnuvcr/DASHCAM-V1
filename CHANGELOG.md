@@ -10,6 +10,7 @@
 
 ### Tests
 - Added robust TTC and depth-proxy regression coverage.
+- CI execution is required before merge.
 - Added browser regression coverage for multi-frame LDW confirmation.
 
 ### Notes
