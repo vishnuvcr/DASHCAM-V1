@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0] - 2026-10-07
+
+### Fixed
+- Corrected lane-line evaluation to use the fitted `x = slope*y + intercept` representation.
+- Scaled lane geometry from the detector's 320x180 analysis frame into the actual video frame before LDW/FCW use.
+- Added a lane-corridor gate to FCW when reliable lane lines are available, rejecting objects outside the current driving corridor.
+- Preserved TTC and lead/lane target state on returned tracks for HUD diagnostics.
+- Added per-track TTC display to the detection overlay.
+
+### Tests
+- Added non-unit-slope lane regression coverage.
+- Added lane-corridor inclusion/exclusion coverage.
+- Added FCW integration coverage with lane geometry.
+
+### Notes
+- FCW falls back to the central lead-target gate when lane lines are unavailable.
+- Monocular TTC remains an engineering estimate and is not safety-certified.
+
 ## [0.5.0] - 2026-10-07
 
 ### Fixed

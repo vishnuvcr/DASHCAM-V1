@@ -3,7 +3,7 @@ import { lerp } from "./geometry.js";
 export function lineXAtY(line, y) {
   if (!line || !Number.isFinite(line.slope) || !Number.isFinite(line.intercept)) return NaN;
   if (Math.abs(line.slope) < 1e-9) return NaN;
-  return (y - line.intercept) / line.slope;
+  return line.slope * y + line.intercept;
 }
 
 export function laneCenterAtY(leftLine, rightLine, y) {
