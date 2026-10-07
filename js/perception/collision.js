@@ -105,3 +105,36 @@ export function targetInLaneCorridor(
 
   return bottomCenter >= leftX + margin && bottomCenter <= rightX - margin;
 }
+
+
+export function heightExpansionTtc(previousBox, currentBox, deltaSeconds) {
+  if (!(deltaSeconds > 0)) return Infinity;
+  const previousHeight = Math.max(0, previousBox.y2 - previousBox.y1);
+  const currentHeight = Math.max(0, currentBox.y2 - currentBox.y1);
+  if (!(previousHeight > 0) || !(currentHeight > previousHeight)) return Infinity;
+
+  const scaleRate = (currentHeight / previousHeight - 1) / deltaSeconds;
+  return scaleRate > 0 ? 1 / scaleRate : Infinity;
+}
+
+export function robustApproachTtc(previousBox, currentBox, deltaSeconds) {
+  const areaTtc = areaExpansionTtc(previousBox, currentBox, deltaSeconds);
+  const heightTtc = heightExpansionTtc(previousBox, currentBox, deltaSeconds);
+  const finite = [areaTtc, heightTtc].filter(Number.isFinite).sort((a, b) => a - b);
+  if (!finite.length) return Infinity;
+  if (finite.length === 1) return finite[0];
+  return (finite[0] + finite[1]) / 2;
+}
+
+export function depthProxy(box, frameHeight) {
+  const height = Math.max(0, box.y2 - box.y1);
+  if (!(height > 0) || !(frameHeight > 0)) return Infinity;
+  return frameHeight / height;
+}
+
+export function depthApproaching(previousBox, currentBox, frameHeight, minReductionRatio = 0.01) {
+  const previousProxy = depthProxy(previousBox, frameHeight);
+  const currentProxy = depthProxy(currentBox, frameHeight);
+  if (!Number.isFinite(previousProxy) || !Number.isFinite(currentProxy)) return false;
+  return currentProxy <= previousProxy * (1 - minReductionRatio);
+}
