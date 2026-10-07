@@ -1,7 +1,15 @@
 {
-  "model": "detector.onnx",
-  "input": {"width": 640, "height": 640, "channels": 3, "layout": "NCHW", "normalization": "0..1"},
-  "classes": ["person", "bicycle", "car", "motorcycle", "bus", "truck"],
+  "format": "onnx",
+  "architecture": "YOLOv8n-compatible",
+  "input": {
+    "width": 640,
+    "height": 640,
+    "channels": 3,
+    "layout": "NCHW",
+    "normalization": "0..1"
+  },
+  "classes": ["person","bicycle","car","motorcycle","airplane","bus","train","truck","boat","traffic light","fire hydrant","stop sign","parking meter","bench","bird","cat","dog","horse","sheep","cow","elephant","bear","zebra","giraffe","backpack","umbrella","handbag","tie","suitcase","frisbee","skis","snowboard","sports ball","kite","baseball bat","baseball glove","skateboard","surfboard","tennis racket","bottle","wine glass","cup","fork","knife","spoon","bowl","banana","apple","sandwich","orange","broccoli","carrot","hot dog","pizza","donut","cake","chair","couch","potted plant","bed","dining table","toilet","tv","laptop","mouse","remote","keyboard","cell phone","microwave","oven","toaster","sink","refrigerator","book","clock","vase","scissors","teddy bear","hair drier","toothbrush"],
+  "targetClassIds": [0, 1, 2, 3, 5, 7],
   "confidenceThreshold": 0.35,
   "iouThreshold": 0.45,
   "outputFormat": "auto"
