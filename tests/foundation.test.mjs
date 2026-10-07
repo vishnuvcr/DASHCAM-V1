@@ -15,6 +15,9 @@ const required = [
   "js/camera.js",
   "js/storage.js",
   "js/telemetry.js",
+  "js/ai/mediapipe.js",
+  "js/ai/mediapipe-worker.js",
+  "js/ai/hybrid-detector.js",
   "VERSION",
   "CHANGELOG.md"
 ];
@@ -27,7 +30,10 @@ for (const relative of [
   "js/app.js",
   "js/camera.js",
   "js/storage.js",
-  "js/telemetry.js"
+  "js/telemetry.js",
+  "js/ai/mediapipe.js",
+  "js/ai/mediapipe-worker.js",
+  "js/ai/hybrid-detector.js"
 ]) {
   const result = spawnSync(process.execPath, ["--check", resolve(root, relative)], { encoding: "utf8" });
   assert.equal(result.status, 0, `JavaScript syntax error in ${relative}: ${result.stderr}`);
