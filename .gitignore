@@ -1,0 +1,20 @@
+# Local editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local test/build output
+coverage/
+dist/
+playwright-report/
+test-results/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local model artifacts
+models/*.onnx
+models/*.bin
