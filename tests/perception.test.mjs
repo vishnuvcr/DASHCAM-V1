@@ -269,3 +269,24 @@ console.log("PERCEPTION_TESTS_PASSED");
   const lanes = detectLaneLines({ width, height, data });
   assert.ok(lanes.leftLine && lanes.rightLine, "plausible paired lanes should survive validation");
 }
+
+{
+  const width = 320;
+  const height = 180;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const paint = (x, y) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const i = (y * width + x) * 4;
+    data[i] = 245;
+    data[i + 1] = 245;
+    data[i + 2] = 245;
+    data[i + 3] = 255;
+  };
+  for (let y = 82; y < 174; y += 1) {
+    const leftX = Math.round(198 - 0.7 * y);
+    for (let offset = -2; offset <= 2; offset += 1) paint(leftX + offset, y);
+  }
+  const single = detectLaneLines({ width, height, data });
+  assert.ok(single.leftLine, "single visible lane boundary should be retained");
+  assert.equal(single.rightLine, null);
+}

@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.10.0] - 2026-10-07
+
+### Changed
+- Added an adaptive inference governor that measures actual ONNX latency and automatically schedules detector work at a sustainable cadence instead of polling a slow model every 100 ms.
+- Added live AI inference rate and model recommendation diagnostics to the HUD.
+- Preserved independent 20 Hz lane processing so LDW remains responsive while detector inference is busy.
+- Fixed lane detection to retain a single valid boundary when the opposite line is temporarily unavailable.
+- Added per-side lane-track expiry so stale boundaries do not suppress lane-departure detection during lane changes.
+- Added fast/balanced/quality model profile guidance for 320, 416, and 640 input sizes.
+
+### Tests
+- Added adaptive performance governor coverage.
+- Added single-boundary lane detection coverage.
+- Independent CI tests remain mandatory before merge.
+
+### Notes
+- Adaptive scheduling improves responsiveness but cannot make an intrinsically slow 640x640 CPU model produce high detection FPS.
+- A lightweight 320/416 ONNX detector is still the preferred mobile configuration.
+- FCW/LDW remain a monocular ADAS prototype and are not safety-certified.
+
 ## [0.9.0] - 2026-10-07
 
 ### Changed

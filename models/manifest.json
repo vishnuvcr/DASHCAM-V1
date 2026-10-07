@@ -1,6 +1,11 @@
 {
   "format": "onnx",
   "architecture": "YOLOv8n-compatible",
+  "recommendedProfiles": {
+    "fast": { "width": 320, "height": 320, "use": "mobile real-time" },
+    "balanced": { "width": 416, "height": 416, "use": "mobile accuracy" },
+    "quality": { "width": 640, "height": 640, "use": "higher recall" }
+  },
   "input": {
     "width": 640,
     "height": 640,
