@@ -1,6 +1,8 @@
 const DB_NAME = "dashcam-v1";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "events";
+const MODEL_STORE = "models";
+const ACTIVE_MODEL_ID = "active";
 
 let dbPromise;
 
@@ -10,10 +12,15 @@ function openDb() {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
+
       if (!db.objectStoreNames.contains(STORE)) {
         const store = db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
         store.createIndex("timestamp", "timestamp");
         store.createIndex("type", "type");
+      }
+
+      if (!db.objectStoreNames.contains(MODEL_STORE)) {
+        db.createObjectStore(MODEL_STORE, { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -55,6 +62,50 @@ export async function listEvents(limit = 100) {
       rows.push(cursor.value);
       cursor.continue();
     };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveModel(buffer, metadata = {}) {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new TypeError("Model data must be an ArrayBuffer.");
+  }
+
+  const db = await openDb();
+  const record = {
+    id: ACTIVE_MODEL_ID,
+    data: buffer,
+    name: metadata.name || "local-model.onnx",
+    sizeBytes: buffer.byteLength,
+    type: metadata.type || "application/octet-stream",
+    savedAt: new Date().toISOString()
+  };
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(MODEL_STORE, "readwrite");
+    tx.objectStore(MODEL_STORE).put(record);
+    tx.oncomplete = () => resolve({ ...record, data: undefined });
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Model save transaction aborted."));
+  });
+}
+
+export async function loadModel() {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(MODEL_STORE, "readonly");
+    const request = tx.objectStore(MODEL_STORE).get(ACTIVE_MODEL_ID);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteModel() {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(MODEL_STORE, "readwrite");
+    const request = tx.objectStore(MODEL_STORE).delete(ACTIVE_MODEL_ID);
+    request.onsuccess = () => resolve(true);
     request.onerror = () => reject(request.error);
   });
 }
