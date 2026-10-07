@@ -7,7 +7,20 @@ const ASSETS = [
   "./js/app.js",
   "./js/camera.js",
   "./js/storage.js",
-  "./js/telemetry.js"
+  "./js/telemetry.js",
+  "./js/perception/geometry.js",
+  "./js/perception/tracker.js",
+  "./js/perception/collision.js",
+  "./js/perception/distance.js",
+  "./js/perception/lanes.js",
+  "./js/perception/detector.js",
+  "./js/perception/pipeline.js",
+  "./js/ai/runtime.js",
+  "./js/ai/preprocess.js",
+  "./js/ai/yolo.js",
+  "./js/ai/worker-client.js",
+  "./js/ai/inference-worker.js",
+  "./models/manifest.json"
 ];
 
 self.addEventListener("install", (event) => {
