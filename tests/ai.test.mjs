@@ -210,3 +210,32 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   assert.ok(governor.recommendation.includes("320"));
   assert.ok(governor.inferenceFps > 0);
 }
+
+
+{
+  const mediaPipeSource = readFileSync(
+    new URL("../js/ai/mediapipe.js", import.meta.url),
+    "utf8"
+  );
+  const workerSource = readFileSync(
+    new URL("../js/ai/mediapipe-worker.js", import.meta.url),
+    "utf8"
+  );
+  const hybridSource = readFileSync(
+    new URL("../js/ai/hybrid-detector.js", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(mediaPipeSource, /new Worker/);
+  assert.match(mediaPipeSource, /type: "module"/);
+  assert.match(mediaPipeSource, /createImageBitmap/);
+  assert.match(mediaPipeSource, /transfer/);
+  assert.match(workerSource, /@mediapipe\/tasks-vision@\${MEDIAPIPE_VERSION}\/vision_bundle\.mjs/);
+  assert.match(workerSource, /efficientdet_lite0\/int8\/latest\/efficientdet_lite0\.tflite/);
+  assert.match(workerSource, /detectForVideo/);
+  assert.match(workerSource, /categoryAllowlist/);
+  assert.match(hybridSource, /MediaPipeObjectDetector/);
+  assert.match(hybridSource, /No offline ONNX model is available/);
+}
+
+console.log("MEDIAPIPE_PROVIDER_TESTS_PASSED");
