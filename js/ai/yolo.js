@@ -297,6 +297,15 @@ export class YoloOnnxDetector {
       throw new Error("YOLO model returned no configured output tensor.");
     }
 
+    // ONNX Runtime Web may expose dynamic output dimensions only on the
+    // concrete tensor returned by session.run(). Capture them for the HUD so
+    // a working model does not incorrectly remain "shape unknown".
+    if (Array.isArray(output.dims) && this.modelInfo) {
+      this.modelInfo.outputDims = output.dims.map((value) =>
+        Number.isFinite(Number(value)) ? Number(value) : String(value)
+      );
+    }
+
     return outputToDetections(output, {
       classes: this.classes,
       targetClassIds: this.targetClassIds,
