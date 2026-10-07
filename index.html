@@ -57,7 +57,7 @@
       <button id="clear-warnings">Clear</button>
     </section>
 
-    <p id="message" class="message">Automatic LDW runs from the camera/replay. Automatic FCW requires a compatible ONNX detector model. Load Model can be used for fully local model testing.</p>
+    <p id="message" class="message">Adaptive inference uses WebGPU when available and automatically adjusts detector cadence. For slower phones, a 320/416 ONNX model is recommended. Automatic LDW runs independently from the detector.</p>
   </main>
 
   <script type="module" src="./js/app.js"></script>
