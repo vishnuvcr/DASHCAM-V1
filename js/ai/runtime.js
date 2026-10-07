@@ -1,15 +1,12 @@
 export const ONNX_RUNTIME_WEB_VERSION = "1.30.0";
 const ORT_CDN_BASE =
   `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_WEB_VERSION}/dist/`;
+const ORT_BROWSER_SCRIPT =
+  `${ORT_CDN_BASE}ort.wasm.min.js`;
+
+let browserRuntimePromise = null;
 
 async function loadLocalRuntime() {
-  try {
-    const webgpu = await import("../../vendor/onnxruntime-web/webgpu.js");
-    return { ort: webgpu, executionProviders: ["webgpu"] };
-  } catch (error) {
-    console.warn("Local WebGPU runtime unavailable:", error);
-  }
-
   try {
     const wasm = await import("../../vendor/onnxruntime-web/ort-web.js");
     return { ort: wasm, executionProviders: ["wasm"] };
@@ -28,25 +25,52 @@ function configureWasmRuntime(ort) {
   }
 }
 
-async function loadBrowserWasmRuntime() {
-  const wasm = await import(
-    `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_WEB_VERSION}/dist/ort.wasm.min.mjs`
-  );
-  configureWasmRuntime(wasm);
-  return {
-    ort: wasm,
-    executionProviders: ["wasm"]
-  };
+function loadBrowserScriptRuntime() {
+  if (globalThis.ort?.InferenceSession) {
+    return Promise.resolve(globalThis.ort);
+  }
+
+  if (browserRuntimePromise) {
+    return browserRuntimePromise;
+  }
+
+  if (typeof document === "undefined") {
+    return Promise.reject(
+      new Error("Browser ONNX Runtime requires a document context.")
+    );
+  }
+
+  browserRuntimePromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = ORT_BROWSER_SCRIPT;
+    script.async = true;
+    script.dataset.dashcamOrt = "wasm";
+    script.onload = () => {
+      if (globalThis.ort?.InferenceSession) {
+        resolve(globalThis.ort);
+      } else {
+        reject(
+          new Error(
+            "ONNX Runtime Web script loaded but did not expose the browser runtime."
+          )
+        );
+      }
+    };
+    script.onerror = () => {
+      reject(new Error("Failed to load ONNX Runtime Web browser script."));
+    };
+    document.head.appendChild(script);
+  });
+
+  return browserRuntimePromise;
 }
 
-async function loadBrowserWebGpuRuntime() {
-  const webgpu = await import(
-    `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ONNX_RUNTIME_WEB_VERSION}/dist/ort.webgpu.min.mjs`
-  );
-  configureWasmRuntime(webgpu);
+async function loadBrowserWasmRuntime() {
+  const ort = await loadBrowserScriptRuntime();
+  configureWasmRuntime(ort);
   return {
-    ort: webgpu,
-    executionProviders: ["webgpu"]
+    ort,
+    executionProviders: ["wasm"]
   };
 }
 
@@ -60,29 +84,12 @@ export async function createOnnxRuntime({ allowNetworkFallback = true } = {}) {
     );
   }
 
-  const candidates = [];
-
-  // Prefer the browser-native WASM ESM build. It is the broadest mobile fallback.
   try {
-    candidates.push(await loadBrowserWasmRuntime());
+    return [await loadBrowserWasmRuntime()];
   } catch (error) {
     console.warn("Network WASM browser runtime unavailable:", error);
+    throw error;
   }
-
-  // Try WebGPU second. It can be faster on supported Chromium devices.
-  if (globalThis.navigator?.gpu) {
-    try {
-      candidates.push(await loadBrowserWebGpuRuntime());
-    } catch (error) {
-      console.warn("Network WebGPU browser runtime unavailable:", error);
-    }
-  }
-
-  if (!candidates.length) {
-    throw new Error("No browser ONNX Runtime Web provider is available.");
-  }
-
-  return candidates;
 }
 
 export async function createSession(modelSource, options = {}) {
