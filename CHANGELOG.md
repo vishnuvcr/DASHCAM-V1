@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.4] - 2026-10-07
+
+### Fixed
+- Replaced the failing ONNX Runtime Web ESM network loader with the browser-compatible `ort.wasm.min.js` script bundle.
+- Load the runtime through a standard browser script element so Brave Android does not execute the incompatible ESM/unenv path.
+- Keep the matching 1.30.0 WASM asset path and single-threaded execution for mobile compatibility.
+- Added a regression test that prevents the broken `.mjs` runtime route from returning.
+
+### Notes
+- This specifically addresses the still-observed Brave Android error: `[unenv] module.require is not implemented yet`.
+- The runtime remains network-backed until ONNX Runtime Web assets are vendored locally.
+- FCW still requires a compatible YOLO ONNX model and an active video stream.
+
 ## [0.4.3] - 2026-10-07
 
 ### Fixed
