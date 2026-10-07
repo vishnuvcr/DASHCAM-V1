@@ -66,6 +66,7 @@ export class ByteTrackLite {
     );
 
     const active = this.tracks.filter((t) => !t.removed);
+    for (const track of active) track.age += 1;
     const highMatch = matchDetections(high, active, this.matchIoU);
 
     for (const match of highMatch.matches) {
