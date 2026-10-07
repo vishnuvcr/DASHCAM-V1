@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.2] - 2026-10-07
+
+### Fixed
+- Added a WebGL fallback for Android/Brave devices where WebGPU is unavailable and WASM initialization is unstable.
+- Disabled the ONNX Runtime WASM proxy worker on the affected GitHub Pages path to avoid duplicate `initWasm()` initialization.
+- Ensured only one browser ONNX Runtime provider bundle is loaded per page.
+- Added runtime fallback diagnostics and regression coverage.
+
+### Notes
+- WebGL is a compatibility fallback, not a replacement for WebGPU.
+- If WebGPU is unavailable and WebGL is supported, object detection can run without entering the problematic WASM initialization path.
+- A lightweight 320/416 model remains the next performance optimization.
+
 ## [0.10.1] - 2026-10-07
 
 ### Fixed
