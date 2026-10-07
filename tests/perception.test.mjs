@@ -23,6 +23,8 @@ const detection = (x, confidence = 0.9, label = "car") => ({
   assert.equal(second.length, 1);
   assert.equal(second[0].id, first[0].id, "track ID must persist across overlapping frames");
   assert.equal(second[0].missed, 0);
+  assert.equal(first[0].confirmed, false, "new tracks should not be displayed before confirmation");
+  assert.equal(second[0].confirmed, true, "tracks should confirm after two matching frames");
 }
 
 {
@@ -30,6 +32,7 @@ const detection = (x, confidence = 0.9, label = "car") => ({
   const first = tracker.update([detection(100, 0.9)], 0);
   const recovered = tracker.update([detection(103, 0.3)], 100);
   assert.equal(recovered[0].id, first[0].id, "low-confidence detection should recover an existing track");
+  assert.equal(recovered[0].confirmed, true);
 }
 
 {
@@ -229,4 +232,31 @@ console.log("PERCEPTION_TESTS_PASSED");
   assert.equal(result.warnings.length, 1);
   assert.ok(result.tracks[0].ttcSeconds <= 2);
   assert.equal(result.tracks[0].laneTarget, true);
+}
+
+
+{
+  const width = 320;
+  const height = 180;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const paint = (x, y) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const index = (y * width + x) * 4;
+    data[index] = 245;
+    data[index + 1] = 245;
+    data[index + 2] = 245;
+    data[index + 3] = 255;
+  };
+
+  for (let y = 82; y < 174; y += 1) {
+    const leftX = Math.round(198 - 0.7 * y);
+    const rightX = Math.round(122 + 0.7 * y);
+    for (let offset = -2; offset <= 2; offset += 1) {
+      paint(leftX + offset, y);
+      paint(rightX + offset, y);
+    }
+  }
+
+  const lanes = detectLaneLines({ width, height, data });
+  assert.ok(lanes.leftLine && lanes.rightLine, "plausible paired lanes should survive validation");
 }
