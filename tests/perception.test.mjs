@@ -134,7 +134,7 @@ const detection = (x, confidence = 0.9, label = "car") => ({
 {
   const detector = new MockDetector([
     [{ label: "car", confidence: 0.95, box: box(120, 80, 220, 180) }],
-    [{ label: "car", confidence: 0.95, box: box(110, 70, 230, 190) }]
+    [{ label: "car", confidence: 0.95, box: box(100, 60, 240, 200) }]
   ]);
   const pipeline = new PerceptionPipeline({ detector, baseTtcThreshold: 2 });
   await pipeline.process({}, 0);
