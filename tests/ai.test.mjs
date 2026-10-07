@@ -229,7 +229,7 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   assert.match(mediaPipeSource, /new Worker/);
   assert.match(mediaPipeSource, /type: "module"/);
   assert.match(mediaPipeSource, /createImageBitmap/);
-  assert.match(mediaPipeSource, /transfer/);
+  assert.match(mediaPipeSource, /\[bitmap\]\);/);
   assert.match(workerSource, /@mediapipe\/tasks-vision@\${MEDIAPIPE_VERSION}\/vision_bundle\.mjs/);
   assert.match(workerSource, /efficientdet_lite0\/int8\/latest\/efficientdet_lite0\.tflite/);
   assert.match(workerSource, /detectForVideo/);
