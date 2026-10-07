@@ -125,7 +125,7 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /return \[runtime\]/);
   assert.match(runtimeSource, /ort\.webgl\.min\.js/);
   assert.match(runtimeSource, /hasWebGL2/);
-  assert.match(runtimeSource, /ort\.env\.wasm\.proxy = false/);
+  assert.match(runtimeSource, /ort\.env\.wasm\.proxy = false/);\n  assert.doesNotMatch(runtimeSource, /enableGraphCapture/);
   assert.match(runtimeSource, /initWasm\(\)/);
 
   const appSource = readFileSync(
