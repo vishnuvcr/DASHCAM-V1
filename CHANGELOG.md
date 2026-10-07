@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.2 — Mobile inference transfer optimization
+
+- Downscales high-resolution video frames to a maximum 320px dimension before MediaPipe worker transfer.
+- Preserves source-coordinate bounding boxes by scaling worker detections back to the original video dimensions.
+- Reduces main-thread bitmap allocation and worker transfer pressure on high-resolution mobile video.
+- Adds regression coverage for portrait and landscape resize geometry.
+- Bumps the service-worker shell cache to 0.11.2.
+- This is not safety-certified; FCW/LDW remain engineering estimates.
+
 ## 0.11.1 — MediaPipe classic-worker compatibility
 
 - Fixed mobile MediaPipe initialization by running the MediaPipe Tasks Vision worker as a classic Web Worker.
