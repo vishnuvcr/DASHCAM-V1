@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.1] - 2026-10-07
+
+### Fixed
+- Capture concrete ONNX Runtime Web output tensor dimensions after inference so the HUD reports the actual model output shape instead of "shape unknown" on runtimes that omit static metadata.
+
+### Tests
+- Added regression coverage for the runtime-output diagnostic path.
+
+### Notes
+- This is a diagnostic-only refinement; FCW/LDW behavior and thresholds are unchanged.
+
 ## [0.8.0] - 2026-10-07
 
 ### Fixed
