@@ -122,7 +122,11 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /ort\.webgpu\.min\.js/);
   assert.match(runtimeSource, /executionProviders: \["webgpu"\]/);
   assert.match(runtimeSource, /Do not load WebGPU and WASM bundles simultaneously/);
-  assert.match(runtimeSource, /return \[await loadBrowserWasmRuntime\(\)\]/);
+  assert.match(runtimeSource, /return \[runtime\]/);
+  assert.match(runtimeSource, /ort\.webgl\.min\.js/);
+  assert.match(runtimeSource, /hasWebGL2/);
+  assert.match(runtimeSource, /ort\.env\.wasm\.proxy = false/);
+  assert.match(runtimeSource, /multiple initWasm/);
 
   const appSource = readFileSync(
     new URL("../js/app.js", import.meta.url),
