@@ -119,29 +119,25 @@ export async function createOnnxRuntime({ allowNetworkFallback = true } = {}) {
     );
   }
 
-  const candidates = [];
-
+  // Do not load WebGPU and WASM bundles simultaneously. Both browser bundles
+  // expose the same global `ort` object; loading them together can replace
+  // runtime state and trigger duplicate WASM initialization on mobile browsers.
   if (globalThis.navigator?.gpu) {
     try {
-      candidates.push(await loadBrowserWebGpuRuntime());
+      return [await loadBrowserWebGpuRuntime()];
     } catch (error) {
       console.warn("Network WebGPU browser runtime unavailable:", error);
     }
   }
 
   try {
-    candidates.push(await loadBrowserWasmRuntime());
+    return [await loadBrowserWasmRuntime()];
   } catch (error) {
     console.warn("Network WASM browser runtime unavailable:", error);
   }
 
-  if (!candidates.length) {
-    throw new Error("No browser ONNX Runtime Web provider is available.");
-  }
-
-  return candidates;
+  throw new Error("No browser ONNX Runtime Web provider is available.");
 }
-
 export async function createSession(modelSource, options = {}) {
   const runtimes = await createOnnxRuntime(options);
   let lastError;
