@@ -27,6 +27,7 @@ const pipeline = new PerceptionPipeline({
 const laneDetector = new BrowserLaneDetector();
 
 let inferenceTimer = null;
+let laneTimer = null;
 let inferenceBusy = false;
 let aiReady = false;
 let aiUnavailable = false;
@@ -35,6 +36,9 @@ let fcwActive = false;
 let ldwActive = false;
 let ldwWarningStreak = 0;
 let ldwClearStreak = 0;
+let latestTracks = [];
+let latestWarnings = [];
+let latestLaneState = null;
 
 function setStatus(state, label) {
   elements.runtime.dataset.state = state;
@@ -262,7 +266,7 @@ function setAutoWarningState(type, active, payload = {}) {
   ldwActive = active;
 }
 
-async function updateAutomaticWarnings(tracks, lanes, warnings = []) {
+async function updateAutomaticFcw(warnings = []) {
   const fcw = warnings
     .map((warning) => ({
       trackId: warning.trackId,
@@ -278,7 +282,9 @@ async function updateAutomaticWarnings(tracks, lanes, warnings = []) {
   } else if (nextFcw) {
     setAutoWarningState("FCW", true, fcw);
   }
+}
 
+async function updateAutomaticLdw(lanes) {
   const laneConfidence = Number(lanes?.confidence || 0);
   const rawLdw = Boolean(
     lanes?.drift?.warning &&
@@ -305,18 +311,22 @@ async function updateAutomaticWarnings(tracks, lanes, warnings = []) {
     );
   }
 }
+async function runLanePerception() {
+  if (!elements.video.videoWidth || media.mode === "standby") return;
+
+  const now = performance.now();
+  const lanes = laneDetector.detect(elements.video, now);
+  latestLaneState = normalizeLaneStateToVideo(lanes || laneDetector.lastState || null);
+
+  await updateAutomaticLdw(latestLaneState);
+  drawOverlay(latestTracks, latestLaneState);
+}
 
 async function runPerception() {
   if (inferenceBusy || !elements.video.videoWidth || media.mode === "standby") return;
   inferenceBusy = true;
   try {
     const now = performance.now();
-    let lanes = null;
-
-    if (now - lastLaneRunMs >= 200) {
-      lanes = laneDetector.detect(elements.video);
-      lastLaneRunMs = now;
-    }
 
     if (!aiReady && !aiUnavailable) {
       try {
@@ -331,22 +341,27 @@ async function runPerception() {
       }
     }
 
-    let tracks = [];
-    let warnings = [];
+    latestTracks = [];
+    latestWarnings = [];
     if (aiReady) {
-      const result = await pipeline.process(elements.video, now, normalizeLaneStateToVideo(lanes || laneDetector.lastState || null));
-      tracks = result.tracks;
-      warnings = result.warnings;
+      const result = await pipeline.process(
+        elements.video,
+        now,
+        latestLaneState
+      );
+      latestTracks = result.tracks.filter((track) => track.confirmed);
+      latestWarnings = result.warnings;
+      await updateAutomaticFcw(latestWarnings);
     }
 
-    const laneState = normalizeLaneStateToVideo(lanes || laneDetector.lastState || null);
-    const stableTracks = tracks.filter((track) => track.confirmed);
-    drawOverlay(stableTracks, laneState);
-    await updateAutomaticWarnings(stableTracks, laneState, warnings);
+    drawOverlay(latestTracks, latestLaneState);
 
     if (aiReady && detector.modelInfo) {
       const target = detector.modelInfo.targetClasses.join(", ");
-      setMessage(`${describeModel()} · targets: ${target} · detections: ${tracks.length}`);
+      const inferenceMs = Number.isFinite(detector.lastInferenceMs)
+        ? ` · inf ${Math.round(detector.lastInferenceMs)}ms`
+        : "";
+      setMessage(`${describeModel()}${inferenceMs} · targets: ${target} · detections: ${latestTracks.length}`);
     }
   } catch (error) {
     aiReady = false;
@@ -357,21 +372,26 @@ async function runPerception() {
     inferenceBusy = false;
   }
 }
-
 function startInferenceLoop() {
   if (inferenceTimer) clearInterval(inferenceTimer);
+  if (laneTimer) clearInterval(laneTimer);
   inferenceTimer = setInterval(runPerception, 100);
+  laneTimer = setInterval(runLanePerception, 50);
 }
 
 function stopInferenceLoop() {
   if (inferenceTimer) clearInterval(inferenceTimer);
+  if (laneTimer) clearInterval(laneTimer);
   inferenceTimer = null;
+  laneTimer = null;
   pipeline.reset();
   laneDetector.reset();
   lastLaneRunMs = 0;
+  latestTracks = [];
+  latestWarnings = [];
+  latestLaneState = null;
   drawOverlay([], null);
 }
-
 async function start() {
   try {
     await media.startCamera();
