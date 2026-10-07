@@ -1,10 +1,28 @@
 # Changelog
 
+## [0.4.0] - 2026-10-07
+
+### Added
+- Pinned ONNX Runtime Web network fallback to 1.30.0.
+- Local ONNX model file loading from the browser UI.
+- YOLOv8-compatible COCO 80-class decoding with target filtering for person, bicycle, car, motorcycle, bus, and truck.
+- Support for common YOLO raw output layouts: `[1,84,N]` and `[1,N,84]`, plus common NMS-style outputs.
+- Model input-dimension validation and runtime/model diagnostics.
+- Synthetic decoder regression coverage for COCO class mapping and both raw output layouts.
+
+### Changed
+- FCW inference now uses a model contract aligned with standard YOLOv8n COCO output rather than a six-class placeholder.
+- Service-worker cache version updated to 0.4.0.
+
+### Notes
+- A third-party YOLOv8 model file is not bundled automatically because its redistribution license must be reviewed before commercial distribution.
+- Load a compatible local ONNX model through the UI for offline model testing.
+- Fully offline AI still requires vendoring the ONNX Runtime Web JS/WASM/WebGPU assets under `vendor/onnxruntime-web/`.
+
 ## [0.3.1] - 2026-10-07
 
 ### Fixed
 - FCW HUD activation now uses only thresholded collision warnings from the PerceptionPipeline, preventing early warnings for TTC values above the configured safety threshold.
-
 
 ## [0.3.0] - 2026-10-07
 

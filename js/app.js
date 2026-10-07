@@ -12,7 +12,7 @@ const elements = {
   video: $("camera"), overlay: $("overlay"), runtime: $("runtime-status"),
   fps: $("fps"), mode: $("mode"), eventCount: $("event-count"), message: $("message"),
   fcw: $("warning-fcw"), ldw: $("warning-ldw"), start: $("start-camera"),
-  stop: $("stop-camera"), file: $("video-file"), testFcw: $("test-fcw"),
+  stop: $("stop-camera"), file: $("video-file"), model: $("model-file"), testFcw: $("test-fcw"),
   testLdw: $("test-ldw"), clear: $("clear-warnings")
 };
 
@@ -163,6 +163,14 @@ function drawOverlay(tracks, lanes) {
   }
 }
 
+
+function describeModel() {
+  if (!detector.modelInfo) return "MODEL: not initialized";
+  const info = detector.modelInfo;
+  return `MODEL: ${info.name} · ${info.runtime} · ${info.outputDims?.join("x") || "shape unknown"}`;
+}
+
+
 function setAutoWarningState(type, active, payload = {}) {
   if (type === "FCW") {
     elements.fcw.classList.toggle("active", active);
@@ -243,6 +251,11 @@ async function runPerception() {
     const laneState = lanes || laneDetector.lastState || null;
     drawOverlay(tracks, laneState);
     await updateAutomaticWarnings(tracks, laneState, warnings);
+
+    if (aiReady && detector.modelInfo) {
+      const target = detector.modelInfo.targetClasses.join(", ");
+      setMessage(`${describeModel()} · targets: ${target}`);
+    }
   } catch (error) {
     aiReady = false;
     aiUnavailable = true;
@@ -292,6 +305,40 @@ elements.stop.addEventListener("click", async () => {
   clearWarnings();
   await record("SESSION_STOPPED");
 });
+
+
+elements.model.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const buffer = await file.arrayBuffer();
+    detector.setModelBuffer(buffer, file.name);
+    pipeline.reset();
+    clearWarnings();
+    aiReady = false;
+    aiUnavailable = false;
+    setStatus("running", media.mode === "standby" ? "READY" : "RUNNING");
+    setMessage(`Model loaded locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). Initializing on next inference.`);
+    await record("AI_MODEL_LOADED", {
+      name: file.name,
+      sizeBytes: file.size,
+      type: file.type || "application/octet-stream"
+    });
+
+    if (media.mode !== "standby") {
+      await runPerception();
+    }
+  } catch (error) {
+    aiReady = false;
+    aiUnavailable = true;
+    setMessage(`Unable to load model: ${error.message}`);
+    await record("AI_MODEL_ERROR", { message: error.message });
+  } finally {
+    event.target.value = "";
+  }
+});
+
 
 elements.file.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
