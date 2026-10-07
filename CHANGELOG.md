@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.0 — Online-first MediaPipe vision
+
+- Replaced the primary mobile-browser YOLO/ONNX inference path with Google MediaPipe EfficientDet-Lite0 int8.
+- Runs MediaPipe inference in a dedicated module Web Worker so synchronous detector work does not block the HUD/camera thread.
+- Uses Google's 320x320 int8 EfficientDet-Lite0 model delivered online, with vehicle/person class filtering.
+- Keeps the existing stored ONNX model as an automatic offline fallback if MediaPipe initialization fails.
+- Preserves ByteTrack-lite, TTC/depth, FCW and LDW logic behind the detector abstraction.
+- Adds worker-side inference timing for performance governance.
+- Bumps the service-worker shell cache to 0.11.0.
+- This is not safety-certified; network AI is not a substitute for a safety-critical local perception system.
+
 ## [0.10.3] - 2026-10-07
 
 ### Fixed
