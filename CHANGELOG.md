@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0] - 2026-10-07
+
+### Fixed
+- Replaced single-frame area-expansion TTC with a robust median of area- and height-expansion TTC measurements over recent track history.
+- Added a monocular depth-proxy approach check so FCW requires the apparent target depth to be consistently decreasing.
+- Added TTC/approach diagnostics to detection labels.
+- Added LDW confidence gating and three-frame warning confirmation to suppress transient false lane warnings.
+
+### Tests
+- Added robust TTC and depth-proxy regression coverage.
+- CI execution is required before merge.
+- Added browser regression coverage for multi-frame LDW confirmation.
+
+### Notes
+- The depth proxy is intentionally unitless and does not claim real-world meters without camera calibration.
+- FCW remains a monocular ADAS prototype and is not safety-certified.
+
 ## [0.7.0] - 2026-10-07
 
 ### Fixed

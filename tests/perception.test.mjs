@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { ByteTrackLite } from "../js/perception/tracker.js";
-import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold, isLeadTarget, targetInLaneCorridor } from "../js/perception/collision.js";
+import { areaExpansionTtc, collisionWarning, adaptiveTtcThreshold, isLeadTarget, targetInLaneCorridor, heightExpansionTtc, robustApproachTtc, depthProxy, depthApproaching } from "../js/perception/collision.js";
 import { distanceFromWidth } from "../js/perception/geometry.js";
 import { estimateVehicleDistance, focalLengthFromCalibration } from "../js/perception/distance.js";
 import { laneDrift, laneCenterAtY } from "../js/perception/lanes.js";
@@ -53,6 +53,11 @@ const detection = (x, confidence = 0.9, label = "car") => ({
   assert.equal(collisionWarning(ttc, 10), true);
   assert.equal(collisionWarning(ttc, 1), false);
   assert.equal(adaptiveTtcThreshold(2, 1.5), 3);
+  assert.ok(heightExpansionTtc(box(100, 100, 200, 200), box(95, 90, 205, 210), 0.5) > 0);
+  assert.ok(robustApproachTtc(box(100, 100, 200, 200), box(95, 90, 205, 210), 0.5) > 0);
+  assert.equal(depthProxy(box(0, 0, 100, 180), 720), 4);
+  assert.equal(depthApproaching(box(0, 0, 100, 180), box(0, 0, 100, 190), 720), true);
+  assert.equal(depthApproaching(box(0, 0, 100, 180), box(0, 0, 100, 179), 720), false);
 }
 
 {

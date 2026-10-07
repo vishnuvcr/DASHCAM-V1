@@ -170,3 +170,12 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   );
   assert.match(yoloSource, /confidenceThreshold = 0\.55/);
 }
+
+{
+  const appSource = readFileSync(
+    new URL("../js/app.js", import.meta.url),
+    "utf8"
+  );
+  assert.match(appSource, /laneConfidence >= 0\.45/);
+  assert.match(appSource, /ldwWarningStreak >= 3/);
+}

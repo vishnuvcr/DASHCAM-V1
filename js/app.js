@@ -33,6 +33,8 @@ let aiUnavailable = false;
 let lastLaneRunMs = 0;
 let fcwActive = false;
 let ldwActive = false;
+let ldwWarningStreak = 0;
+let ldwClearStreak = 0;
 
 function setStatus(state, label) {
   elements.runtime.dataset.state = state;
@@ -48,6 +50,8 @@ function clearWarnings() {
   elements.ldw.textContent = "LDW";
   fcwActive = false;
   ldwActive = false;
+  ldwWarningStreak = 0;
+  ldwClearStreak = 0;
 }
 
 async function refreshEventCount() {
@@ -275,12 +279,29 @@ async function updateAutomaticWarnings(tracks, lanes, warnings = []) {
     setAutoWarningState("FCW", true, fcw);
   }
 
-  const nextLdw = Boolean(lanes?.drift?.warning);
+  const laneConfidence = Number(lanes?.confidence || 0);
+  const rawLdw = Boolean(
+    lanes?.drift?.warning &&
+    laneConfidence >= 0.45
+  );
+
+  if (rawLdw) {
+    ldwWarningStreak += 1;
+    ldwClearStreak = 0;
+  } else {
+    ldwWarningStreak = 0;
+    ldwClearStreak += 1;
+  }
+
+  const nextLdw = ldwActive
+    ? ldwClearStreak < 3
+    : ldwWarningStreak >= 3;
+
   if (nextLdw !== ldwActive) {
     setAutoWarningState("LDW", nextLdw, lanes?.drift || {});
     await record(
       nextLdw ? "LDW_AUTO_START" : "LDW_AUTO_CLEAR",
-      lanes?.drift || {}
+      { ...(lanes?.drift || {}), laneConfidence }
     );
   }
 }
