@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { letterboxCanvas, undoLetterbox } from "../js/ai/preprocess.js";
+import { calculateLetterbox, undoLetterbox } from "../js/ai/preprocess.js";
 
-const source = { width: 1280, height: 720 };
-const meta = letterboxCanvas(source, 640, 640);
+const meta = calculateLetterbox(1280, 720, 640, 640);
 assert.equal(meta.scale, 0.5);
+assert.equal(meta.width, 640);
+assert.equal(meta.height, 360);
 assert.equal(meta.dx, 0);
 assert.equal(meta.dy, 140);
 assert.equal(meta.sourceWidth, 1280);
