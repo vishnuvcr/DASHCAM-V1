@@ -66,8 +66,8 @@ const detection = (x, confidence = 0.9, label = "car") => ({
 }
 
 {
-  const left = { slope: 1, intercept: -100 };
-  const right = { slope: 1, intercept: -500 };
+  const left = { slope: 1, intercept: 100 };
+  const right = { slope: 1, intercept: -200 };
   assert.equal(laneCenterAtY(left, right, 500), 550);
   const centered = laneDrift({
     leftLine: left,
