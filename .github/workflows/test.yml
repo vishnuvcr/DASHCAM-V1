@@ -24,3 +24,10 @@ jobs:
 
       - name: Run perception tests
         run: node tests/perception.test.mjs
+
+      - name: Run AI preprocessing tests
+        run: node tests/ai.test.mjs
+
+      - name: Check all browser modules
+        run: |
+          find js -name "*.js" -print0 | xargs -0 -n1 node --check
