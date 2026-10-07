@@ -3,7 +3,8 @@ import {
   areaExpansionTtc,
   collisionWarning,
   adaptiveTtcThreshold,
-  isLeadTarget
+  isLeadTarget,
+  targetInLaneCorridor
 } from "./collision.js";
 
 export class PerceptionPipeline {
@@ -24,7 +25,7 @@ export class PerceptionPipeline {
     this.warningStreakById = new Map();
   }
 
-  async process(source, timestampMs = performance.now()) {
+  async process(source, timestampMs = performance.now(), laneState = null) {
     const detections = await this.detector.detect(source);
     const tracks = this.tracker.update(detections, timestampMs);
     const warnings = [];
@@ -50,9 +51,17 @@ export class PerceptionPipeline {
           frameWidth,
           frameHeight
         });
+        const laneGate = targetInLaneCorridor(track.box, {
+          frameWidth,
+          frameHeight,
+          leftLine: laneState?.leftLine,
+          rightLine: laneState?.rightLine
+        });
         track.leadTarget = leadTarget;
+        track.laneTarget = laneGate !== false;
+        track.ttcSeconds = ttc;
 
-        const qualifies = leadTarget && collisionWarning(ttc, threshold);
+        const qualifies = leadTarget && laneGate !== false && collisionWarning(ttc, threshold);
         const streak = qualifies
           ? (this.warningStreakById.get(track.id) || 0) + 1
           : 0;
@@ -70,6 +79,7 @@ export class PerceptionPipeline {
       } else {
         track.ttcSeconds = Infinity;
         track.leadTarget = false;
+        track.laneTarget = false;
         this.warningStreakById.set(track.id, 0);
       }
 
@@ -88,7 +98,7 @@ export class PerceptionPipeline {
 
     return {
       detections,
-      tracks,
+      tracks: tracks.map((track) => ({ ...track })),
       warnings
     };
   }
