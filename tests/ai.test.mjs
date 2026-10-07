@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { calculateLetterbox, undoLetterbox } from "../js/ai/preprocess.js";
 import { COCO_CLASSES, outputToDetections } from "../js/ai/yolo.js";
 
@@ -51,7 +52,7 @@ assert.equal(COCO_CLASSES[7], "truck");
   const set = (channel, index, value) => { data[channel * count + index] = value; };
 
   set(0, 0, 320); set(1, 0, 320); set(2, 0, 120); set(3, 0, 80);
-  set(6, 0, 0.92); // COCO class 2 = car => channel 4 + 2
+  set(6, 0, 0.92);
 
   set(0, 1, 50); set(1, 1, 50); set(2, 1, 40); set(3, 1, 40);
   set(0, 1, 50);
@@ -107,6 +108,16 @@ assert.equal(COCO_CLASSES[7], "truck");
 
   assert.equal(detections.length, 1);
   assert.equal(detections[0].label, "motorcycle");
+}
+
+{
+  const runtimeSource = readFileSync(
+    new URL("../js/ai/runtime.js", import.meta.url),
+    "utf8"
+  );
+  assert.match(runtimeSource, /ort\.wasm\.min\.js/);
+  assert.doesNotMatch(runtimeSource, /ort\.wasm\.min\.mjs/);
+  assert.match(runtimeSource, /document\.createElement\("script"\)/);
 }
 
 console.log("AI_PREPROCESS_TESTS_PASSED");
