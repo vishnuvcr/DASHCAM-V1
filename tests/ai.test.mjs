@@ -118,6 +118,8 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /ort\.wasm\.min\.js/);
   assert.doesNotMatch(runtimeSource, /ort\.wasm\.min\.mjs/);
   assert.match(runtimeSource, /document\.createElement\("script"\)/);
+  assert.match(runtimeSource, /ort\.webgpu\.min\.js/);
+  assert.match(runtimeSource, /executionProviders: \["webgpu"\]/);
 
   const appSource = readFileSync(
     new URL("../js/app.js", import.meta.url),
@@ -169,6 +171,8 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
     "utf8"
   );
   assert.match(yoloSource, /confidenceThreshold = 0\.55/);
+  assert.match(yoloSource, /this\.inputWidth = modelInputWidth/);
+  assert.match(yoloSource, /lastInferenceMs/);
   assert.match(yoloSource, /modelInfo\.outputDims = output\.dims/);
 }
 
