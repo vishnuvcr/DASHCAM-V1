@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { calculateLetterbox, undoLetterbox } from "../js/ai/preprocess.js";
 import { COCO_CLASSES, outputToDetections } from "../js/ai/yolo.js";
 import { PerformanceGovernor } from "../js/ai/performance.js";
+import { getMediaInputSize } from "../js/ai/mediapipe.js";
 
 const meta = calculateLetterbox(1280, 720, 640, 640);
 assert.equal(meta.scale, 0.5);
@@ -230,13 +231,26 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   assert.doesNotMatch(mediaPipeSource, /type: "module"/);
   assert.match(mediaPipeSource, /classic Worker/);
   assert.match(mediaPipeSource, /createImageBitmap/);
+  assert.match(mediaPipeSource, /resizeWidth: inputSize.width/);
+  assert.match(mediaPipeSource, /resizeHeight: inputSize.height/);
+  assert.match(mediaPipeSource, /sourceWidth/);
+  assert.match(mediaPipeSource, /sourceHeight/);
   assert.match(mediaPipeSource, /\[bitmap\]/);
   assert.match(workerSource, /@mediapipe\/tasks-vision@\${MEDIAPIPE_VERSION}\/vision_bundle\.mjs/);
   assert.match(workerSource, /efficientdet_lite0\/int8\/latest\/efficientdet_lite0\.tflite/);
   assert.match(workerSource, /detectForVideo/);
+  assert.match(workerSource, /scaleX/);
+  assert.match(workerSource, /scaleY/);
   assert.match(workerSource, /categoryAllowlist/);
   assert.match(hybridSource, /MediaPipeObjectDetector/);
   assert.match(hybridSource, /No offline ONNX model is available/);
 }
 
 console.log("MEDIAPIPE_PROVIDER_TESTS_PASSED");
+
+
+{
+  assert.deepEqual(getMediaInputSize(1600, 2560), { width: 200, height: 320 });
+  assert.deepEqual(getMediaInputSize(1920, 1080), { width: 320, height: 180 });
+  assert.deepEqual(getMediaInputSize(320, 180), { width: 320, height: 180 });
+}
