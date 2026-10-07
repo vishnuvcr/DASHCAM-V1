@@ -31,7 +31,7 @@ function normalizeDetections(result) {
     TARGET_CLASSES.includes(item.label) &&
     item.confidence > 0 &&
     item.box.x2 > item.box.x1 &&
-    item.box.y2 > item.y1
+    item.box.y2 > item.box.y1
   );
 }
 
