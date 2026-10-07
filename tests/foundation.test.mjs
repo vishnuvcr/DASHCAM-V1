@@ -60,4 +60,8 @@ const manifest = JSON.parse(readFileSync(resolve(root, "manifest.json"), "utf8")
 assert.equal(manifest.name, "DASHCAM-V1");
 assert.equal(manifest.display, "standalone");
 
+const version = readFileSync(resolve(root, "VERSION"), "utf8").trim();
+const expectedCache = `dashcam-v1-shell-${version}`;
+assert.equal(sw.includes(expectedCache), true, "service worker cache must match VERSION");
+
 console.log("FOUNDATION_TESTS_PASSED");
