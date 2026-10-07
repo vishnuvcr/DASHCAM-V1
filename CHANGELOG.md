@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.2] - 2026-10-07
+
+### Fixed
+- Loading an ONNX model now immediately initializes the browser FCW engine instead of waiting for camera/replay inference.
+- Restored local models are initialized automatically at application startup.
+- UI now reports explicit FCW READY or FCW initialization failure states.
+- Model initialization metadata is recorded in the append-only event log.
+
+### Notes
+- FCW READY means the ONNX inference engine is initialized; actual FCW warnings require an active camera/replay stream and a tracked target whose TTC crosses the warning threshold.
+- Fully offline FCW still requires local ONNX Runtime Web assets in addition to the persisted model.
+
 ## [0.4.1] - 2026-10-07
 
 ### Added
