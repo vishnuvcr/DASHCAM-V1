@@ -162,9 +162,41 @@ export function detectLaneLines(imageData, options = {}) {
   );
   const pair = validateLanePair(leftLine, rightLine, imageData.width, imageData.height);
 
+  // Preserve an individually valid boundary when the opposite boundary is
+  // temporarily hidden (common during lane changes, glare, or traffic).
+  if (pair) {
+    return {
+      leftLine: pair.leftLine,
+      rightLine: pair.rightLine,
+      paired: true,
+      pointCounts: { left: points.left.length, right: points.right.length }
+    };
+  }
+
+  if (leftLine && !rightLine) {
+    return {
+      leftLine,
+      rightLine: null,
+      paired: false,
+      pointCounts: { left: points.left.length, right: points.right.length }
+    };
+  }
+
+  if (rightLine && !leftLine) {
+    return {
+      leftLine: null,
+      rightLine,
+      paired: false,
+      pointCounts: { left: points.left.length, right: points.right.length }
+    };
+  }
+
+  // Two incompatible candidates are more dangerous than one reliable side.
+  const best = (leftLine?.points || 0) >= (rightLine?.points || 0) ? leftLine : rightLine;
   return {
-    leftLine: pair?.leftLine || null,
-    rightLine: pair?.rightLine || null,
+    leftLine: best === leftLine ? leftLine : null,
+    rightLine: best === rightLine ? rightLine : null,
+    paired: false,
     pointCounts: { left: points.left.length, right: points.right.length }
   };
 }
@@ -189,6 +221,8 @@ export class BrowserLaneDetector {
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     this.previousLeft = null;
     this.previousRight = null;
+    this.leftMissedFrames = 0;
+    this.rightMissedFrames = 0;
     this.missedFrames = 0;
     this.previousNormalized = null;
     this.previousTimestampMs = null;
@@ -217,6 +251,7 @@ export class BrowserLaneDetector {
     }
 
     if (result.leftLine) {
+      this.leftMissedFrames = 0;
       this.previousLeft = this.previousLeft
         ? {
             slope: smoothLaneValue(this.previousLeft.slope, result.leftLine.slope, this.smoothingAlpha),
@@ -225,9 +260,13 @@ export class BrowserLaneDetector {
             points: result.leftLine.points
           }
         : result.leftLine;
+    } else {
+      this.leftMissedFrames += 1;
+      if (this.leftMissedFrames > 3) this.previousLeft = null;
     }
 
     if (result.rightLine) {
+      this.rightMissedFrames = 0;
       this.previousRight = this.previousRight
         ? {
             slope: smoothLaneValue(this.previousRight.slope, result.rightLine.slope, this.smoothingAlpha),
@@ -236,6 +275,9 @@ export class BrowserLaneDetector {
             points: result.rightLine.points
           }
         : result.rightLine;
+    } else {
+      this.rightMissedFrames += 1;
+      if (this.rightMissedFrames > 3) this.previousRight = null;
     }
 
     const leftLine = this.previousLeft;
@@ -302,6 +344,8 @@ export class BrowserLaneDetector {
   reset() {
     this.previousLeft = null;
     this.previousRight = null;
+    this.leftMissedFrames = 0;
+    this.rightMissedFrames = 0;
     this.missedFrames = 0;
     this.previousNormalized = null;
     this.previousTimestampMs = null;
