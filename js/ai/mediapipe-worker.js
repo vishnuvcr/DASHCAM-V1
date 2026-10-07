@@ -12,7 +12,7 @@ const TARGET_CLASSES = [
   "person", "bicycle", "car", "motorcycle", "bus", "truck"
 ];
 
-function normalizeDetections(result) {
+function normalizeDetections(result, scaleX = 1, scaleY = 1) {
   return (result?.detections || []).map((detection) => {
     const box = detection.boundingBox;
     const category = detection.categories?.[0];
@@ -21,10 +21,10 @@ function normalizeDetections(result) {
       classId: Number.isFinite(category?.index) ? category.index : -1,
       confidence: Number(category?.score || 0),
       box: {
-        x1: box.originX,
-        y1: box.originY,
-        x2: box.originX + box.width,
-        y2: box.originY + box.height
+        x1: box.originX * scaleX,
+        y1: box.originY * scaleY,
+        x2: (box.originX + box.width) * scaleX,
+        y2: (box.originY + box.height) * scaleY
       }
     };
   }).filter((item) =>
@@ -36,7 +36,15 @@ function normalizeDetections(result) {
 }
 
 self.onmessage = async (event) => {
-  const { type, id, bitmap, timestamp, scoreThreshold = 0.35 } = event.data || {};
+  const {
+    type,
+    id,
+    bitmap,
+    timestamp,
+    sourceWidth,
+    sourceHeight,
+    scoreThreshold = 0.35
+  } = event.data || {};
 
   try {
     if (type === "init") {
@@ -67,13 +75,15 @@ self.onmessage = async (event) => {
     const started = performance.now();
     const result = detector.detectForVideo(bitmap, timestamp);
     const inferenceMs = performance.now() - started;
+    const scaleX = sourceWidth > 0 ? sourceWidth / bitmap.width : 1;
+    const scaleY = sourceHeight > 0 ? sourceHeight / bitmap.height : 1;
     bitmap.close();
 
     self.postMessage({
       type: "result",
       id,
       inferenceMs,
-      detections: normalizeDetections(result)
+      detections: normalizeDetections(result, scaleX, scaleY)
     });
   } catch (error) {
     try { bitmap?.close(); } catch {}
