@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const required = [
   "index.html",
