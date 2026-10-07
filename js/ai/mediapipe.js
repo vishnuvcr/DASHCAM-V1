@@ -25,9 +25,12 @@ export class MediaPipeObjectDetector {
         return;
       }
 
+      // MediaPipe Tasks Vision internally uses importScripts() for its WASM
+      // runtime. A module Worker rejects importScripts(), so the detector
+      // worker must remain a classic Worker even though this controller is ESM.
       const worker = new Worker(
         new URL("./mediapipe-worker.js", import.meta.url),
-        { type: "module", name: "dashcam-mediapipe" }
+        { name: "dashcam-mediapipe" }
       );
       this.worker = worker;
 

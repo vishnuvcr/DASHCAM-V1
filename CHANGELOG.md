@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.1 — MediaPipe classic-worker compatibility
+
+- Fixed mobile MediaPipe initialization by running the MediaPipe Tasks Vision worker as a classic Web Worker.
+- Avoids the module-worker incompatibility where MediaPipe's WASM runtime calls `importScripts()`, which module workers reject.
+- Preserves worker isolation, transferable ImageBitmap frames, EfficientDet-Lite0 int8, ByteTrack-lite, TTC/FCW and LDW.
+- Bumps the service-worker shell cache to 0.11.1.
+- This is not safety-certified; FCW/LDW remain engineering estimates.
+
 ## 0.11.0 — Online-first MediaPipe vision
 
 - Replaced the primary mobile-browser YOLO/ONNX inference path with Google MediaPipe EfficientDet-Lite0 int8.

@@ -227,7 +227,8 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   );
 
   assert.match(mediaPipeSource, /new Worker/);
-  assert.match(mediaPipeSource, /type: "module"/);
+  assert.doesNotMatch(mediaPipeSource, /type: "module"/);
+  assert.match(mediaPipeSource, /classic Worker/);
   assert.match(mediaPipeSource, /createImageBitmap/);
   assert.match(mediaPipeSource, /\[bitmap\]/);
   assert.match(workerSource, /@mediapipe\/tasks-vision@\${MEDIAPIPE_VERSION}\/vision_bundle\.mjs/);
