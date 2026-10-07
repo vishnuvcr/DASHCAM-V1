@@ -1,6 +1,6 @@
 import { MediaController } from "./camera.js";
 import { Telemetry } from "./telemetry.js";
-import { addEvent, countEvents } from "./storage.js";
+import { addEvent, countEvents, saveModel, loadModel, deleteModel } from "./storage.js";
 import { ByteTrackLite } from "./perception/tracker.js";
 import { PerceptionPipeline } from "./perception/pipeline.js";
 import { BrowserLaneDetector } from "./perception/lane-detector.js";
@@ -12,7 +12,7 @@ const elements = {
   video: $("camera"), overlay: $("overlay"), runtime: $("runtime-status"),
   fps: $("fps"), mode: $("mode"), eventCount: $("event-count"), message: $("message"),
   fcw: $("warning-fcw"), ldw: $("warning-ldw"), start: $("start-camera"),
-  stop: $("stop-camera"), file: $("video-file"), model: $("model-file"), testFcw: $("test-fcw"),
+  stop: $("stop-camera"), file: $("video-file"), model: $("model-file"), forgetModel: $("forget-model"), testFcw: $("test-fcw"),
   testLdw: $("test-ldw"), clear: $("clear-warnings")
 };
 
@@ -57,6 +57,25 @@ async function refreshEventCount() {
 async function record(type, payload = {}) {
   await addEvent(type, payload);
   await refreshEventCount();
+}
+
+async function restoreStoredModel() {
+  try {
+    const stored = await loadModel();
+    if (!stored?.data) return false;
+
+    detector.setModelBuffer(stored.data, stored.name);
+    aiReady = false;
+    aiUnavailable = false;
+
+    const sizeMb = (stored.sizeBytes / 1024 / 1024).toFixed(1);
+    setMessage(`Stored model restored: ${stored.name} (${sizeMb} MB). It is available offline.`);
+    return true;
+  } catch (error) {
+    console.warn("Stored model restore failed:", error);
+    await record("AI_MODEL_RESTORE_ERROR", { message: error.message });
+    return false;
+  }
 }
 
 function getVideoTransform() {
@@ -314,12 +333,17 @@ elements.model.addEventListener("change", async (event) => {
   try {
     const buffer = await file.arrayBuffer();
     detector.setModelBuffer(buffer, file.name);
+    await saveModel(buffer, {
+      name: file.name,
+      sizeBytes: file.size,
+      type: file.type || "application/octet-stream"
+    });
     pipeline.reset();
     clearWarnings();
     aiReady = false;
     aiUnavailable = false;
     setStatus("running", media.mode === "standby" ? "READY" : "RUNNING");
-    setMessage(`Model loaded locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). Initializing on next inference.`);
+    setMessage(`Model loaded and stored locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). It will be reused offline.`);
     await record("AI_MODEL_LOADED", {
       name: file.name,
       sizeBytes: file.size,
@@ -339,6 +363,23 @@ elements.model.addEventListener("change", async (event) => {
   }
 });
 
+
+
+elements.forgetModel.addEventListener("click", async () => {
+  try {
+    await deleteModel();
+    detector.clearModelBuffer();
+    pipeline.reset();
+    aiReady = false;
+    aiUnavailable = true;
+    clearWarnings();
+    setMessage("Stored AI model removed from this device. Automatic LDW remains available.");
+    await record("AI_MODEL_REMOVED");
+  } catch (error) {
+    setMessage(`Unable to remove stored model: ${error.message}`);
+    await record("AI_MODEL_REMOVE_ERROR", { message: error.message });
+  }
+});
 
 elements.file.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
@@ -399,6 +440,7 @@ async function init() {
     setMessage("Camera API unavailable. Local video replay remains available.");
   }
   await refreshEventCount();
+  await restoreStoredModel();
   renderLoop();
 }
 
