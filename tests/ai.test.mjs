@@ -169,6 +169,7 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
     "utf8"
   );
   assert.match(yoloSource, /confidenceThreshold = 0\.55/);
+  assert.match(yoloSource, /modelInfo\.outputDims = output\.dims/);
 }
 
 {
