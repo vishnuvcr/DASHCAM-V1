@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0] - 2026-10-07
+
+### Added
+- Automatic browser-side LDW from lane marking detection on camera or local replay.
+- Automatic FCW pipeline integration using tracked-object TTC.
+- Lane line overlay and lane-drift direction feedback.
+- Mobile-safe overlay coordinate mapping for object-fit camera rendering.
+- Automatic warning event transitions in append-only telemetry storage.
+- Lane detection regression coverage and automatic FCW pipeline regression coverage.
+
+### Changed
+- App now uses the shared PerceptionPipeline instead of duplicating FCW/TTC logic.
+- Service worker cache updated to 0.3.0 and includes the lane detector module.
+- Simulation controls are explicitly labeled as diagnostics rather than real ADAS inputs.
+- The release remains a browser prototype and is not safety-certified.
+
+### Notes
+- Automatic FCW remains unavailable until a compatible ONNX detector model is installed.
+- Automatic LDW does not require the object detector model, but its lane-marking heuristic must be validated against representative road/weather conditions.
+- Fully offline AI inference still requires bundling a validated model and local ONNX Runtime Web assets.
+
 ## [0.2.0] - 2026-10-07
 
 ### Added

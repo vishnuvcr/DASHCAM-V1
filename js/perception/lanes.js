@@ -18,18 +18,22 @@ export function laneDrift({
   rightLine,
   vehicleCenterX,
   referenceY,
-  frameWidth
+  frameWidth,
+  warningThreshold = 0.08
 }) {
   const center = laneCenterAtY(leftLine, rightLine, referenceY);
   if (!Number.isFinite(center) || !(frameWidth > 0)) {
-    return { valid: false, normalized: 0, warning: false };
+    return { valid: false, normalized: 0, warning: false, direction: null, laneCenterX: NaN };
   }
 
   const normalized = (vehicleCenterX - center) / frameWidth;
+  const warning = Math.abs(normalized) >= warningThreshold;
   return {
     valid: true,
     normalized,
-    warning: Math.abs(normalized) >= 0.08
+    warning,
+    direction: warning ? (normalized < 0 ? "LEFT" : "RIGHT") : null,
+    laneCenterX: center
   };
 }
 

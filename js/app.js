@@ -2,7 +2,8 @@ import { MediaController } from "./camera.js";
 import { Telemetry } from "./telemetry.js";
 import { addEvent, countEvents } from "./storage.js";
 import { ByteTrackLite } from "./perception/tracker.js";
-import { areaExpansionTtc, collisionWarning } from "./perception/collision.js";
+import { PerceptionPipeline } from "./perception/pipeline.js";
+import { BrowserLaneDetector } from "./perception/lane-detector.js";
 import { YoloOnnxDetector } from "./ai/yolo.js";
 
 const $ = (id) => document.getElementById(id);
@@ -17,12 +18,21 @@ const elements = {
 
 const media = new MediaController(elements.video);
 const telemetry = new Telemetry({ fpsEl: elements.fps, modeEl: elements.mode, eventCountEl: elements.eventCount });
-const tracker = new ByteTrackLite();
 const detector = new YoloOnnxDetector();
-let previousById = new Map();
+const pipeline = new PerceptionPipeline({
+  detector,
+  tracker: new ByteTrackLite(),
+  baseTtcThreshold: 2
+});
+const laneDetector = new BrowserLaneDetector();
+
 let inferenceTimer = null;
 let inferenceBusy = false;
 let aiReady = false;
+let aiUnavailable = false;
+let lastLaneRunMs = 0;
+let fcwActive = false;
+let ldwActive = false;
 
 function setStatus(state, label) {
   elements.runtime.dataset.state = state;
@@ -34,71 +44,205 @@ function setMessage(message) { elements.message.textContent = message; }
 function clearWarnings() {
   elements.fcw.classList.remove("active");
   elements.ldw.classList.remove("active");
+  elements.fcw.textContent = "FCW";
+  elements.ldw.textContent = "LDW";
+  fcwActive = false;
+  ldwActive = false;
 }
 
-async function refreshEventCount() { telemetry.setEventCount(await countEvents()); }
+async function refreshEventCount() {
+  telemetry.setEventCount(await countEvents());
+}
 
 async function record(type, payload = {}) {
   await addEvent(type, payload);
   await refreshEventCount();
 }
 
-function drawTracks(tracks) {
-  const ctx = elements.overlay.getContext("2d");
-  const ratio = window.devicePixelRatio || 1;
+function getVideoTransform() {
   const rect = elements.video.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
-  const sx = (rect.width * ratio) / (elements.video.videoWidth || rect.width);
-  const sy = (rect.height * ratio) / (elements.video.videoHeight || rect.height);
-  ctx.clearRect(0, 0, elements.overlay.width, elements.overlay.height);
-  ctx.lineWidth = 2 * ratio;
-  ctx.font = `600 ${12 * ratio}px ui-monospace`;
+  const sourceWidth = elements.video.videoWidth;
+  const sourceHeight = elements.video.videoHeight;
+  if (!(rect.width > 0) || !(rect.height > 0) || !(sourceWidth > 0) || !(sourceHeight > 0)) return null;
+
+  const fit = getComputedStyle(elements.video).objectFit;
+  let scaleX = rect.width / sourceWidth;
+  let scaleY = rect.height / sourceHeight;
+
+  if (fit === "cover" || fit === "contain") {
+    const scale = fit === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+    scaleX = scale;
+    scaleY = scale;
+  }
+
+  const renderedWidth = sourceWidth * scaleX;
+  const renderedHeight = sourceHeight * scaleY;
+  return {
+    scaleX,
+    scaleY,
+    offsetX: (rect.width - renderedWidth) / 2,
+    offsetY: (rect.height - renderedHeight) / 2
+  };
+}
+
+function mapSourcePoint(x, y, transform) {
+  return {
+    x: x * transform.scaleX + transform.offsetX,
+    y: y * transform.scaleY + transform.offsetY
+  };
+}
+
+function drawLine(ctx, line, frameWidth, frameHeight, transform) {
+  if (!line) return;
+  const y1 = frameHeight * 0.45;
+  const y2 = frameHeight * 0.97;
+  const p1 = mapSourcePoint(
+    line.slope * y1 + line.intercept,
+    y1,
+    transform
+  );
+  const p2 = mapSourcePoint(
+    line.slope * y2 + line.intercept,
+    y2,
+    transform
+  );
+  ctx.moveTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+}
+
+function drawOverlay(tracks, lanes) {
+  const rect = elements.video.getBoundingClientRect();
+  const transform = getVideoTransform();
+  if (!transform) return;
+
+  const ratio = window.devicePixelRatio || 1;
+  const ctx = elements.overlay.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.lineWidth = 2;
+  ctx.font = "600 12px ui-monospace";
+  ctx.textBaseline = "alphabetic";
+
   for (const track of tracks) {
     const b = track.box;
-    const x = b.x1 * sx, y = b.y1 * sy, w = (b.x2 - b.x1) * sx, h = (b.y2 - b.y1) * sy;
+    const topLeft = mapSourcePoint(b.x1, b.y1, transform);
+    const bottomRight = mapSourcePoint(b.x2, b.y2, transform);
+    const width = bottomRight.x - topLeft.x;
+    const height = bottomRight.y - topLeft.y;
     ctx.strokeStyle = "#00f0ff";
-    ctx.strokeRect(x, y, w, h);
+    ctx.strokeRect(topLeft.x, topLeft.y, width, height);
     ctx.fillStyle = "#00f0ff";
-    ctx.fillText(`#${track.id} ${track.label} ${Math.round(track.confidence * 100)}%`, x, Math.max(14 * ratio, y - 4 * ratio));
+    ctx.fillText(
+      `#${track.id} ${track.label} ${Math.round(track.confidence * 100)}%`,
+      topLeft.x,
+      Math.max(14, topLeft.y - 4)
+    );
+  }
+
+  if (lanes?.leftLine || lanes?.rightLine) {
+    ctx.beginPath();
+    drawLine(ctx, lanes.leftLine, lanes.frameWidth, lanes.frameHeight, transform);
+    drawLine(ctx, lanes.rightLine, lanes.frameWidth, lanes.frameHeight, transform);
+    ctx.strokeStyle = "#ff9d2e";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  if (lanes?.drift?.valid) {
+    const y = lanes.frameHeight * 0.92;
+    const centerX = lanes.drift.laneCenterX;
+    const vehicleX = lanes.frameWidth / 2;
+    const lanePoint = mapSourcePoint(centerX, y, transform);
+    const vehiclePoint = mapSourcePoint(vehicleX, y, transform);
+    ctx.beginPath();
+    ctx.moveTo(lanePoint.x, lanePoint.y);
+    ctx.lineTo(vehiclePoint.x, vehiclePoint.y);
+    ctx.strokeStyle = lanes.drift.warning ? "#ff375f" : "#00f0ff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }
 
-async function runInference() {
+function setAutoWarningState(type, active, payload = {}) {
+  if (type === "FCW") {
+    elements.fcw.classList.toggle("active", active);
+    if (payload.ttcSeconds != null) {
+      elements.fcw.textContent = `FCW ${payload.ttcSeconds.toFixed(1)}s`;
+    } else {
+      elements.fcw.textContent = "FCW";
+    }
+    fcwActive = active;
+    return;
+  }
+
+  elements.ldw.classList.toggle("active", active);
+  elements.ldw.textContent = active && payload.direction ? `LDW ${payload.direction}` : "LDW";
+  ldwActive = active;
+}
+
+async function updateAutomaticWarnings(tracks, lanes) {
+  const fcw = tracks
+    .map((track) => ({ trackId: track.id, ttcSeconds: track.ttcSeconds }))
+    .filter((item) => Number.isFinite(item.ttcSeconds))
+    .sort((a, b) => a.ttcSeconds - b.ttcSeconds)[0];
+
+  const nextFcw = Boolean(fcw && fcw.ttcSeconds > 0);
+  if (nextFcw !== fcwActive) {
+    setAutoWarningState("FCW", nextFcw, fcw || {});
+    await record(nextFcw ? "FCW_AUTO_START" : "FCW_AUTO_CLEAR", fcw || {});
+  } else if (nextFcw) {
+    setAutoWarningState("FCW", true, fcw);
+  }
+
+  const nextLdw = Boolean(lanes?.drift?.warning);
+  if (nextLdw !== ldwActive) {
+    setAutoWarningState("LDW", nextLdw, lanes?.drift || {});
+    await record(
+      nextLdw ? "LDW_AUTO_START" : "LDW_AUTO_CLEAR",
+      lanes?.drift || {}
+    );
+  }
+}
+
+async function runPerception() {
   if (inferenceBusy || !elements.video.videoWidth || media.mode === "standby") return;
   inferenceBusy = true;
   try {
-    if (!aiReady) {
-      await detector.init();
-      aiReady = true;
-      setMessage("Browser AI detector ready.");
-      await record("AI_READY");
-    }
-    const detections = await detector.detect(elements.video);
     const now = performance.now();
-    const tracks = tracker.update(detections, now);
-    const warnings = [];
+    let lanes = null;
 
-    for (const track of tracks) {
-      const previous = previousById.get(track.id);
-      if (previous) {
-        const dt = (now - previous.timestamp) / 1000;
-        const ttc = areaExpansionTtc(previous.box, track.box, dt);
-        track.ttcSeconds = ttc;
-        if (collisionWarning(ttc, 2)) warnings.push({ type: "FCW", trackId: track.id, ttcSeconds: ttc });
+    if (now - lastLaneRunMs >= 200) {
+      lanes = laneDetector.detect(elements.video);
+      lastLaneRunMs = now;
+    }
+
+    if (!aiReady && !aiUnavailable) {
+      try {
+        await detector.init();
+        aiReady = true;
+        setMessage("Browser AI detector ready. Automatic FCW is active; automatic LDW is active.");
+        await record("AI_READY");
+      } catch (error) {
+        aiUnavailable = true;
+        setMessage("AI model is not installed yet. Automatic LDW remains available; camera/replay remains available.");
+        await record("AI_UNAVAILABLE", { message: error.message });
       }
-      previousById.set(track.id, { box: { ...track.box }, timestamp: now });
     }
 
-    drawTracks(tracks);
-    elements.fcw.classList.toggle("active", warnings.length > 0);
-  } catch (error) {
+    let tracks = [];
     if (aiReady) {
-      aiReady = false;
-      setMessage(`AI inference stopped: ${error.message}`);
-      await record("AI_ERROR", { message: error.message });
-    } else {
-      setMessage("AI model is not installed yet. Camera/replay remains available.");
+      const result = await pipeline.process(elements.video, now);
+      tracks = result.tracks;
     }
+
+    const laneState = lanes || laneDetector.lastState || null;
+    drawOverlay(tracks, laneState);
+    await updateAutomaticWarnings(tracks, laneState);
+  } catch (error) {
+    aiReady = false;
+    aiUnavailable = true;
+    setMessage(`Perception error: ${error.message}`);
+    await record("PERCEPTION_ERROR", { message: error.message });
   } finally {
     inferenceBusy = false;
   }
@@ -106,15 +250,16 @@ async function runInference() {
 
 function startInferenceLoop() {
   if (inferenceTimer) clearInterval(inferenceTimer);
-  inferenceTimer = setInterval(runInference, 100);
+  inferenceTimer = setInterval(runPerception, 100);
 }
 
 function stopInferenceLoop() {
   if (inferenceTimer) clearInterval(inferenceTimer);
   inferenceTimer = null;
-  tracker.reset();
-  previousById.clear();
-  drawTracks([]);
+  pipeline.reset();
+  laneDetector.reset();
+  lastLaneRunMs = 0;
+  drawOverlay([], null);
 }
 
 async function start() {
@@ -122,7 +267,7 @@ async function start() {
     await media.startCamera();
     telemetry.setMode("camera");
     setStatus("running", "RUNNING");
-    setMessage("Live camera active. Initializing browser AI when a model is available.");
+    setMessage("Live camera active. Automatic LDW starts immediately; automatic FCW starts when the AI model is available.");
     await record("SESSION_STARTED");
     startInferenceLoop();
   } catch (error) {
@@ -139,6 +284,7 @@ elements.stop.addEventListener("click", async () => {
   telemetry.setMode("standby");
   setStatus("idle", "READY");
   setMessage("Input stopped.");
+  clearWarnings();
   await record("SESSION_STOPPED");
 });
 
@@ -149,7 +295,7 @@ elements.file.addEventListener("change", async (event) => {
     await media.loadFile(file);
     telemetry.setMode("video");
     setStatus("running", "REPLAY");
-    setMessage("Local video replay active. Initializing browser AI when a model is available.");
+    setMessage("Local video replay active. Automatic LDW starts immediately; automatic FCW starts when the AI model is available.");
     await record("VIDEO_REPLAY_STARTED");
     startInferenceLoop();
   } catch (error) {
@@ -189,8 +335,11 @@ function renderLoop() {
 
 async function init() {
   if ("serviceWorker" in navigator) {
-    try { await navigator.serviceWorker.register("./sw.js"); }
-    catch (error) { console.warn("Service worker registration failed:", error); }
+    try {
+      await navigator.serviceWorker.register("./sw.js");
+    } catch (error) {
+      console.warn("Service worker registration failed:", error);
+    }
   }
   if (!window.isSecureContext) {
     setMessage("Camera access usually requires HTTPS. GitHub Pages supplies HTTPS.");

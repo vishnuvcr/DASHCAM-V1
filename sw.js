@@ -1,4 +1,4 @@
-const CACHE = "dashcam-v1-shell-0.2.0";
+const CACHE = "dashcam-v1-shell-0.3.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const ASSETS = [
   "./js/perception/collision.js",
   "./js/perception/distance.js",
   "./js/perception/lanes.js",
+  "./js/perception/lane-detector.js",
   "./js/perception/detector.js",
   "./js/perception/pipeline.js",
   "./js/ai/runtime.js",
