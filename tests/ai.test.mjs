@@ -126,7 +126,7 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /ort\.webgl\.min\.js/);
   assert.match(runtimeSource, /hasWebGL2/);
   assert.match(runtimeSource, /ort\.env\.wasm\.proxy = false/);
-  assert.match(runtimeSource, /multiple initWasm/);
+  assert.match(runtimeSource, /initWasm\\(\\)/);
 
   const appSource = readFileSync(
     new URL("../js/app.js", import.meta.url),
