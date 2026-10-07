@@ -1,0 +1,8 @@
+{
+  "model": "detector.onnx",
+  "input": {"width": 640, "height": 640, "channels": 3, "layout": "NCHW", "normalization": "0..1"},
+  "classes": ["person", "bicycle", "car", "motorcycle", "bus", "truck"],
+  "confidenceThreshold": 0.35,
+  "iouThreshold": 0.45,
+  "outputFormat": "auto"
+}
