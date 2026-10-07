@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.1] - 2026-10-07
+
+### Fixed
+- Prevented concurrent ONNX Runtime initialization, which could trigger `multiple calls to initWasm()` on mobile browsers.
+- Prevented WebGPU and WASM browser bundles from being loaded as simultaneous runtime candidates sharing the same global `ort` object.
+- Added regression coverage for runtime initialization serialization.
+
+### Notes
+- This is a stability hotfix for browser runtime initialization; it does not by itself make a 640x640 CPU model real-time.
+- FCW/LDW remain a monocular ADAS prototype and are not safety-certified.
+
 ## [0.10.0] - 2026-10-07
 
 ### Changed
