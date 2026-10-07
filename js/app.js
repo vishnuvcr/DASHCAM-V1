@@ -596,6 +596,7 @@ async function init() {
   } else if (!media.supportsCamera) {
     setMessage("Camera API unavailable. Local video replay remains available.");
   }
+  renderLoop();
   await refreshEventCount();
   await restoreStoredModel();
   if (!aiReady && !aiUnavailable) {
@@ -611,7 +612,6 @@ async function init() {
       await record("AI_ONLINE_INIT_ERROR", { message: error.message });
     }
   }
-  renderLoop();
 }
 
 init();
