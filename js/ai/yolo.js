@@ -199,7 +199,7 @@ export class YoloOnnxDetector {
     inputHeight = 640,
     classes = COCO_CLASSES,
     targetClassIds = DEFAULT_TARGET_CLASS_IDS,
-    confidenceThreshold = 0.45,
+    confidenceThreshold = 0.55,
     iouThreshold = 0.45
   } = {}) {
     Object.assign(this, {
