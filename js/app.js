@@ -133,6 +133,35 @@ function mapSourcePoint(x, y, transform) {
   };
 }
 
+function normalizeLaneStateToVideo(lanes) {
+  if (!lanes) return null;
+
+  const sourceWidth = elements.video.videoWidth;
+  const sourceHeight = elements.video.videoHeight;
+  if (!(sourceWidth > 0) || !(sourceHeight > 0) || !(lanes.frameWidth > 0) || !(lanes.frameHeight > 0)) {
+    return lanes;
+  }
+
+  const sx = sourceWidth / lanes.frameWidth;
+  const sy = sourceHeight / lanes.frameHeight;
+  const scaleLine = (line) => {
+    if (!line) return null;
+    return {
+      ...line,
+      slope: line.slope * sx / sy,
+      intercept: line.intercept * sx
+    };
+  };
+
+  return {
+    ...lanes,
+    leftLine: scaleLine(lanes.leftLine),
+    rightLine: scaleLine(lanes.rightLine),
+    frameWidth: sourceWidth,
+    frameHeight: sourceHeight
+  };
+}
+
 function drawLine(ctx, line, frameWidth, frameHeight, transform) {
   if (!line) return;
   const y1 = frameHeight * 0.45;
@@ -174,7 +203,7 @@ function drawOverlay(tracks, lanes) {
     ctx.strokeRect(topLeft.x, topLeft.y, width, height);
     ctx.fillStyle = "#00f0ff";
     ctx.fillText(
-      `#${track.id} ${track.label} ${Math.round(track.confidence * 100)}%`,
+      `#${track.id} ${track.label} ${Math.round(track.confidence * 100)}%${Number.isFinite(track.ttcSeconds) ? ` TTC ${track.ttcSeconds.toFixed(1)}s` : ""}`,
       topLeft.x,
       Math.max(14, topLeft.y - 4)
     );
@@ -284,12 +313,12 @@ async function runPerception() {
     let tracks = [];
     let warnings = [];
     if (aiReady) {
-      const result = await pipeline.process(elements.video, now);
+      const result = await pipeline.process(elements.video, now, normalizeLaneStateToVideo(lanes || laneDetector.lastState || null));
       tracks = result.tracks;
       warnings = result.warnings;
     }
 
-    const laneState = lanes || laneDetector.lastState || null;
+    const laneState = normalizeLaneStateToVideo(lanes || laneDetector.lastState || null);
     drawOverlay(tracks, laneState);
     await updateAutomaticWarnings(tracks, laneState, warnings);
 
