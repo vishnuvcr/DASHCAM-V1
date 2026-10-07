@@ -205,9 +205,9 @@ console.log("PERCEPTION_TESTS_PASSED");
 {
   const detector = new MockDetector([
     [{ label: "car", confidence: 0.95, box: box(500, 300, 780, 500) }],
-    [{ label: "car", confidence: 0.95, box: box(500, 250, 780, 540) }],
-    [{ label: "car", confidence: 0.95, box: box(500, 200, 780, 590) }],
-    [{ label: "car", confidence: 0.95, box: box(500, 150, 780, 640) }]
+    [{ label: "car", confidence: 0.95, box: box(500, 250, 780, 550) }],
+    [{ label: "car", confidence: 0.95, box: box(480, 180, 800, 680) }],
+    [{ label: "car", confidence: 0.95, box: box(400, 80, 880, 720) }]
   ]);
   const pipeline = new PerceptionPipeline({
     detector,
@@ -222,8 +222,9 @@ console.log("PERCEPTION_TESTS_PASSED");
     rightLine: { slope: 0.5, intercept: 350 }
   };
   await pipeline.process(source, 0, laneState);
-  await pipeline.process(source, 500, laneState);
+  const firstApproach = await pipeline.process(source, 500, laneState);
   const result = await pipeline.process(source, 1000, laneState);
+  assert.equal(firstApproach.warnings.length, 0);
   assert.equal(result.warnings.length, 1);
   assert.ok(result.tracks[0].ttcSeconds <= 2);
   assert.equal(result.tracks[0].laneTarget, true);
