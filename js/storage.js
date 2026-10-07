@@ -3,6 +3,7 @@ const DB_VERSION = 2;
 const STORE = "events";
 const MODEL_STORE = "models";
 const ACTIVE_MODEL_ID = "active";
+const MAX_MODEL_BYTES = 64 * 1024 * 1024;
 
 let dbPromise;
 
@@ -69,6 +70,12 @@ export async function listEvents(limit = 100) {
 export async function saveModel(buffer, metadata = {}) {
   if (!(buffer instanceof ArrayBuffer)) {
     throw new TypeError("Model data must be an ArrayBuffer.");
+  }
+  if (buffer.byteLength === 0) {
+    throw new Error("Model file is empty.");
+  }
+  if (buffer.byteLength > MAX_MODEL_BYTES) {
+    throw new Error("Model file exceeds the 64 MB browser storage limit.");
   }
 
   const db = await openDb();
