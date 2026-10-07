@@ -121,7 +121,7 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /document\.createElement\("script"\)/);
   assert.match(runtimeSource, /ort\.webgpu\.min\.js/);
   assert.match(runtimeSource, /executionProviders: \["webgpu"\]/);
-  assert.match(runtimeSource, /Do not load WebGPU and WASM bundles simultaneously/);
+  assert.match(runtimeSource, /global ORT bundle must never be mixed/);
   assert.match(runtimeSource, /return \[runtime\]/);
   assert.match(runtimeSource, /ort\.webgl\.min\.js/);
   assert.match(runtimeSource, /hasWebGL2/);
