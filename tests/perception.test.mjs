@@ -178,8 +178,8 @@ console.log("PERCEPTION_TESTS_PASSED");
 
 
 {
-  const left = { slope: -0.4, intercept: 800 };
-  const right = { slope: 0.4, intercept: 200 };
+  const left = { slope: -0.5, intercept: 850 };
+  const right = { slope: 0.5, intercept: 350 };
   const inside = box(610, 500, 690, 690);
   const outside = box(760, 500, 840, 690);
   assert.equal(
@@ -218,8 +218,8 @@ console.log("PERCEPTION_TESTS_PASSED");
   const laneState = {
     frameWidth: 1280,
     frameHeight: 720,
-    leftLine: { slope: -0.4, intercept: 800 },
-    rightLine: { slope: 0.4, intercept: 200 }
+    leftLine: { slope: -0.5, intercept: 850 },
+    rightLine: { slope: 0.5, intercept: 350 }
   };
   await pipeline.process(source, 0, laneState);
   await pipeline.process(source, 500, laneState);
