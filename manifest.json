@@ -1,0 +1,11 @@
+{
+  "name": "DASHCAM-V1",
+  "short_name": "DASHCAM",
+  "description": "Browser-only offline-first ADAS dashboard",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#05070b",
+  "theme_color": "#05070b",
+  "orientation": "landscape",
+  "icons": []
+}
