@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.3] - 2026-10-07
+
+### Fixed
+- Disabled ONNX Runtime WebGPU graph capture for the YOLO detector.
+- Prevented Android/WebGPU inference failure caused by ordinary Tensor inputs being used with graph capture, which requires external buffers.
+- Added regression coverage to ensure graph capture is not reintroduced.
+
+### Validation
+- This release specifically addresses the field error: `External buffer must be provided for input/output index 0 when enableGraphCapture is true.`
+- FCW READY is not treated as sufficient validation; actual `session.run()` inference must succeed during field testing.
+
 ## [0.10.2] - 2026-10-07
 
 ### Fixed
