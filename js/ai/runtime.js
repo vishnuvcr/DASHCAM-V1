@@ -192,10 +192,9 @@ export async function createSession(modelSource, options = {}) {
         graphOptimizationLevel: "all"
       };
 
-      if (runtime.kind === "webgpu") {
-        sessionOptions.enableGraphCapture = true;
-      }
-
+      // Graph capture is intentionally disabled. The detector supplies ordinary
+      // ONNX Tensor objects to session.run(); graph capture requires external
+      // buffers for captured inputs/outputs and causes Android inference to fail.
       const session = await runtime.ort.InferenceSession.create(
         modelSource,
         sessionOptions
