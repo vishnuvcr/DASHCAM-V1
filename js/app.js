@@ -165,6 +165,14 @@ function normalizeLaneStateToVideo(lanes) {
     ...lanes,
     leftLine: scaleLine(lanes.leftLine),
     rightLine: scaleLine(lanes.rightLine),
+    drift: lanes.drift
+      ? {
+          ...lanes.drift,
+          laneCenterX: Number.isFinite(lanes.drift.laneCenterX)
+            ? lanes.drift.laneCenterX * sx
+            : lanes.drift.laneCenterX
+        }
+      : null,
     frameWidth: sourceWidth,
     frameHeight: sourceHeight
   };
