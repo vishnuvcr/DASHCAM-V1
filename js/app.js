@@ -5,6 +5,7 @@ import { ByteTrackLite } from "./perception/tracker.js";
 import { PerceptionPipeline } from "./perception/pipeline.js";
 import { BrowserLaneDetector } from "./perception/lane-detector.js";
 import { YoloOnnxDetector } from "./ai/yolo.js";
+import { PerformanceGovernor } from "./ai/performance.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,8 +26,10 @@ const pipeline = new PerceptionPipeline({
   baseTtcThreshold: 2
 });
 const laneDetector = new BrowserLaneDetector();
+const performanceGovernor = new PerformanceGovernor();
 
 let inferenceTimer = null;
+let inferenceLoopActive = false;
 let laneTimer = null;
 let inferenceBusy = false;
 let aiReady = false;
@@ -359,6 +362,7 @@ async function runPerception() {
       );
       latestTracks = result.tracks.filter((track) => track.confirmed);
       latestWarnings = result.warnings;
+      performanceGovernor.record(detector.lastInferenceMs);
       await updateAutomaticFcw(latestWarnings);
     }
 
@@ -366,10 +370,17 @@ async function runPerception() {
 
     if (aiReady && detector.modelInfo) {
       const target = detector.modelInfo.targetClasses.join(", ");
-      const inferenceMs = Number.isFinite(detector.lastInferenceMs)
-        ? ` · inf ${Math.round(detector.lastInferenceMs)}ms`
+      const latency = performanceGovernor.latencyMs;
+      const inferenceMs = Number.isFinite(latency) && latency > 0
+        ? ` · inf ${Math.round(latency)}ms`
         : "";
-      setMessage(`${describeModel()}${inferenceMs} · targets: ${target} · detections: ${latestTracks.length}`);
+      const rate = performanceGovernor.inferenceFps > 0
+        ? ` · AI ${performanceGovernor.inferenceFps.toFixed(1)}Hz`
+        : "";
+      const recommendation = performanceGovernor.recommendation === "REAL-TIME"
+        ? ""
+        : ` · ${performanceGovernor.recommendation}`;
+      setMessage(`${describeModel()}${inferenceMs}${rate}${recommendation} · targets: ${target} · detections: ${latestTracks.length}`);
     }
   } catch (error) {
     aiReady = false;
@@ -380,26 +391,39 @@ async function runPerception() {
     inferenceBusy = false;
   }
 }
+function scheduleInference() {
+  if (!inferenceLoopActive) return;
+  if (inferenceTimer) clearTimeout(inferenceTimer);
+  inferenceTimer = setTimeout(async () => {
+    await runPerception();
+    scheduleInference();
+  }, performanceGovernor.nextDelayMs());
+}
+
 function startInferenceLoop() {
-  if (inferenceTimer) clearInterval(inferenceTimer);
+  if (inferenceTimer) clearTimeout(inferenceTimer);
   if (laneTimer) clearInterval(laneTimer);
-  inferenceTimer = setInterval(runPerception, 100);
+  inferenceLoopActive = true;
   laneTimer = setInterval(runLanePerception, 50);
+  scheduleInference();
 }
 
 function stopInferenceLoop() {
-  if (inferenceTimer) clearInterval(inferenceTimer);
+  inferenceLoopActive = false;
+  if (inferenceTimer) clearTimeout(inferenceTimer);
   if (laneTimer) clearInterval(laneTimer);
   inferenceTimer = null;
   laneTimer = null;
   pipeline.reset();
   laneDetector.reset();
+  performanceGovernor.reset();
   lastLaneRunMs = 0;
   latestTracks = [];
   latestWarnings = [];
   latestLaneState = null;
   drawOverlay([], null);
 }
+
 async function start() {
   try {
     await media.startCamera();
@@ -444,6 +468,7 @@ elements.model.addEventListener("change", async (event) => {
     aiReady = false;
     aiUnavailable = false;
     setStatus("running", media.mode === "standby" ? "READY" : "RUNNING");
+    performanceGovernor.reset();
     setMessage(`Model loaded and stored locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). Initializing FCW engine…`);
 
     try {
