@@ -41,12 +41,14 @@ export class ByteTrackLite {
     highConfidence = 0.5,
     lowConfidence = 0.1,
     matchIoU = 0.25,
-    maxAge = 20
+    maxAge = 12,
+    minHits = 2
   } = {}) {
     this.highConfidence = highConfidence;
     this.lowConfidence = lowConfidence;
     this.matchIoU = matchIoU;
     this.maxAge = maxAge;
+    this.minHits = Math.max(1, minHits);
     this.nextId = 1;
     this.tracks = [];
   }
@@ -123,7 +125,8 @@ export class ByteTrackLite {
         age: t.age,
         hits: t.hits,
         missed: t.missed,
-        timestamp: t.lastTimestamp
+        timestamp: t.lastTimestamp,
+        confirmed: t.hits >= this.minHits
       }));
   }
 
