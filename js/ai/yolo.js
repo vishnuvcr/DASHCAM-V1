@@ -217,6 +217,7 @@ export class YoloOnnxDetector {
     this.inputName = null;
     this.outputName = null;
     this.modelInfo = null;
+    this.lastInferenceMs = 0;
   }
 
   setModelBuffer(buffer, name = "local-model.onnx") {
@@ -249,14 +250,18 @@ export class YoloOnnxDetector {
     const outputDims = readMetadataShape(session.outputMetadata, this.outputName);
 
     if (Array.isArray(inputDims) && inputDims.length === 4) {
-      const inputWidth = Number(inputDims[3]);
-      const inputHeight = Number(inputDims[2]);
-      if (Number.isFinite(inputWidth) && Number.isFinite(inputHeight)) {
-        if (inputWidth !== this.inputWidth || inputHeight !== this.inputHeight) {
-          throw new Error(
-            `Model input is ${inputWidth}x${inputHeight}; expected ${this.inputWidth}x${this.inputHeight}.`
-          );
-        }
+      const modelInputWidth = Number(inputDims[3]);
+      const modelInputHeight = Number(inputDims[2]);
+      if (
+        Number.isFinite(modelInputWidth) &&
+        Number.isFinite(modelInputHeight) &&
+        modelInputWidth > 0 &&
+        modelInputHeight > 0
+      ) {
+        // Accept compatible square/rectangular ONNX exports instead of
+        // hard-coding 640x640. This lets the app use lighter 320/416 models.
+        this.inputWidth = modelInputWidth;
+        this.inputHeight = modelInputHeight;
       }
     }
 
@@ -288,9 +293,11 @@ export class YoloOnnxDetector {
       [1, 3, this.inputHeight, this.inputWidth]
     );
 
+    const inferenceStart = performance.now();
     const result = await this.runtime.session.run({
       [this.inputName]: tensor
     });
+    this.lastInferenceMs = performance.now() - inferenceStart;
 
     const output = result[this.outputName];
     if (!output) {
