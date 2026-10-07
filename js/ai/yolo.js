@@ -218,6 +218,7 @@ export class YoloOnnxDetector {
     this.outputName = null;
     this.modelInfo = null;
     this.lastInferenceMs = 0;
+    this.initPromise = null;
   }
 
   setModelBuffer(buffer, name = "local-model.onnx") {
@@ -228,6 +229,7 @@ export class YoloOnnxDetector {
     this.modelName = name;
     this.runtime = null;
     this.modelInfo = null;
+    this.initPromise = null;
     return this;
   }
 
@@ -236,12 +238,18 @@ export class YoloOnnxDetector {
     this.modelName = null;
     this.runtime = null;
     this.modelInfo = null;
+    this.initPromise = null;
   }
 
   async init() {
-    const source = this.modelBuffer || this.modelUrl;
-    this.runtime = await createSession(source);
-    const { session } = this.runtime;
+    if (this.runtime) return this;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      const source = this.modelBuffer || this.modelUrl;
+      const runtime = await createSession(source);
+      this.runtime = runtime;
+      const { session } = runtime;
 
     this.inputName = session.inputNames[0];
     this.outputName = session.outputNames[0];
@@ -275,7 +283,14 @@ export class YoloOnnxDetector {
       targetClasses: [...this.targetClassIds].map((id) => this.classes[id]).filter(Boolean)
     };
 
-    return this;
+      return this;
+    })();
+
+    try {
+      return await this.initPromise;
+    } finally {
+      this.initPromise = null;
+    }
   }
 
   get ready() {
