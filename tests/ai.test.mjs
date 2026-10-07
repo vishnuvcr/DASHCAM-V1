@@ -21,11 +21,11 @@ assert.equal(COCO_CLASSES[7], "truck");
 {
   const data = new Float32Array([
     320, 320, 160, 120,
-    0.05, 0.91
+    0.91, 1
   ]);
   const output = {
     data,
-    dims: [1, 6, 1]
+    dims: [1, 1, 6]
   };
   const detections = outputToDetections(output, {
     classes: ["person", "bicycle"],
