@@ -121,6 +121,8 @@ assert.equal(COCO_CLASSES[7], "truck");
   assert.match(runtimeSource, /document\.createElement\("script"\)/);
   assert.match(runtimeSource, /ort\.webgpu\.min\.js/);
   assert.match(runtimeSource, /executionProviders: \["webgpu"\]/);
+  assert.match(runtimeSource, /Do not load WebGPU and WASM bundles simultaneously/);
+  assert.match(runtimeSource, /return \[await loadBrowserWasmRuntime\(\)\]/);
 
   const appSource = readFileSync(
     new URL("../js/app.js", import.meta.url),
@@ -175,6 +177,8 @@ console.log("AI_PREPROCESS_TESTS_PASSED");
   assert.match(yoloSource, /this\.inputWidth = modelInputWidth/);
   assert.match(yoloSource, /lastInferenceMs/);
   assert.match(yoloSource, /modelInfo\.outputDims = output\.dims/);
+  assert.match(yoloSource, /this\.initPromise/);
+  assert.match(yoloSource, /if \(this\.initPromise\) return this\.initPromise;/);
 }
 
 {
