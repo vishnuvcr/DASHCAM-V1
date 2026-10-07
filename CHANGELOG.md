@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.1] - 2026-10-07
+
+### Added
+- Persistent local ONNX model storage in IndexedDB.
+- Automatic restoration of the previously loaded model on startup.
+- Explicit Remove Stored Model control.
+- 64 MB browser-side model-size guard.
+- Service-worker cache version bumped to force the latest app shell.
+
+### Notes
+- A compatible model must still be loaded once before automatic FCW can operate.
+- The stored model can then be reused without re-downloading it.
+- Fully offline AI inference also requires a local ONNX Runtime Web provider.
+
 ## [0.4.0] - 2026-10-07
 
 ### Added
