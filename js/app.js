@@ -69,8 +69,30 @@ async function restoreStoredModel() {
     aiUnavailable = false;
 
     const sizeMb = (stored.sizeBytes / 1024 / 1024).toFixed(1);
-    setMessage(`Stored model restored: ${stored.name} (${sizeMb} MB). It is available offline.`);
-    return true;
+    setMessage(`Stored model found: ${stored.name} (${sizeMb} MB). Initializing FCW engine…`);
+
+    try {
+      await detector.init();
+      aiReady = true;
+      const runtime = detector.modelInfo?.runtime || "browser";
+      setMessage(`FCW READY · ${stored.name} · ${runtime}. Start camera or replay to begin vehicle detection.`);
+      await record("AI_MODEL_RESTORED_READY", {
+        name: stored.name,
+        runtime,
+        inputDims: detector.modelInfo?.inputDims || null,
+        outputDims: detector.modelInfo?.outputDims || null
+      });
+      return true;
+    } catch (error) {
+      aiReady = false;
+      aiUnavailable = true;
+      setMessage(`Stored model found, but FCW initialization failed: ${error.message}`);
+      await record("AI_MODEL_RESTORE_INIT_ERROR", {
+        name: stored.name,
+        message: error.message
+      });
+      return false;
+    }
   } catch (error) {
     console.warn("Stored model restore failed:", error);
     await record("AI_MODEL_RESTORE_ERROR", { message: error.message });
@@ -343,16 +365,39 @@ elements.model.addEventListener("change", async (event) => {
     aiReady = false;
     aiUnavailable = false;
     setStatus("running", media.mode === "standby" ? "READY" : "RUNNING");
-    setMessage(`Model loaded and stored locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). It will be reused offline.`);
+    setMessage(`Model loaded and stored locally: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB). Initializing FCW engine…`);
+
+    try {
+      await detector.init();
+      aiReady = true;
+      aiUnavailable = false;
+      const runtime = detector.modelInfo?.runtime || "browser";
+      setMessage(`FCW READY · ${file.name} · ${runtime}. Start camera or replay to begin vehicle detection.`);
+      await record("AI_MODEL_READY", {
+        name: file.name,
+        runtime,
+        inputDims: detector.modelInfo?.inputDims || null,
+        outputDims: detector.modelInfo?.outputDims || null
+      });
+
+      if (media.mode !== "standby") {
+        await runPerception();
+      }
+    } catch (error) {
+      aiReady = false;
+      aiUnavailable = true;
+      setMessage(`Model stored, but FCW initialization failed: ${error.message}`);
+      await record("AI_MODEL_INIT_ERROR", {
+        name: file.name,
+        message: error.message
+      });
+    }
+
     await record("AI_MODEL_LOADED", {
       name: file.name,
       sizeBytes: file.size,
       type: file.type || "application/octet-stream"
     });
-
-    if (media.mode !== "standby") {
-      await runPerception();
-    }
   } catch (error) {
     aiReady = false;
     aiUnavailable = true;
